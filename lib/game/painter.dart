@@ -101,7 +101,7 @@ class WorldPainter extends CustomPainter {
     }
     _goalLight(canvas);
     _hunters(canvas, camX, viewW);
-    if (world.state != PlayerState.dead) _player(canvas);
+    _player(canvas);
     _spears(canvas);
     _splashes(canvas);
     canvas.restore();
@@ -394,6 +394,32 @@ class WorldPainter extends CustomPainter {
   }
 
   void _player(Canvas canvas) {
+    final dir = world.facingRight ? 1.0 : -1.0;
+    if (world.state == PlayerState.dead) {
+      final t = world.time - world.deathTime;
+      switch (world.deathKind) {
+        case DeathKind.fall || DeathKind.drown:
+          drawFalling(
+            canvas,
+            look: Look.hero,
+            foot: world.pos,
+            dir: dir,
+            time: world.time,
+          );
+        default:
+          drawDying(
+            canvas,
+            look: Look.hero,
+            foot: world.pos,
+            dir: dir,
+            fallDir: world.fallDir,
+            t: t,
+            time: world.time,
+            wind: world.windAt(world.pos.dx),
+          );
+      }
+      return;
+    }
     drawFigure(
       canvas,
       look: Look.hero,

@@ -12,6 +12,14 @@ enum Look {
 }
 
 const _ink = Color(0xFF070707);
+
+/// Bahar se tay kiya hua pose (maut ka manzar waghera): (ran/baazu ka angle, ghutne/kohni ka mor)
+class FigurePose {
+  final (double, double) legA, legB, armA, armB;
+  final double lean;
+  const FigurePose(this.legA, this.legB, this.armA, this.armB, {this.lean = 0});
+}
+
 final _fill = Paint()..color = _ink;
 
 /// [foot]: paon ki jagah, [dir]: 1 = right ki taraf munh, [phase]: daud ka chakkar
@@ -26,6 +34,8 @@ void drawFigure(
   required double time,
   double wind = 0,
   double scale = 1,
+  FigurePose? pose,
+  bool eyesClosed = false,
 }) {
   canvas.save();
   canvas.translate(foot.dx, foot.dy);
@@ -33,13 +43,14 @@ void drawFigure(
   final hero = look == Look.hero;
 
   final s = sin(phase), c = cos(phase);
-  final bob = moving ? -sin(phase * 2).abs() * 1.6 : sin(time * 2) * 0.5;
-  final lean = moving
-      ? 0.17
-      : (inAir ? 0.06 : 0.0); // daurte waqt aagay jhuka hua
+  final bob = pose != null
+      ? 0.0
+      : (moving ? -sin(phase * 2).abs() * 1.6 : sin(time * 2) * 0.5);
+  // daurte waqt aagay jhuka hua
+  final lean = pose?.lean ?? (moving ? 0.17 : (inAir ? 0.06 : 0.0));
 
   // Taangen: (ran ka angle, ghutne ka mor)
-  final (double, double) legA, legB;
+  (double, double) legA, legB;
   if (inAir) {
     legA = (0.95, -1.45);
     legB = (-0.45, -0.85);
@@ -51,7 +62,7 @@ void drawFigure(
     legB = (-0.12, 0);
   }
   // Baazu: kohni muri hui, taangon ke ulat zor se jhoolte
-  final (double, double) armA, armB;
+  (double, double) armA, armB;
   if (inAir) {
     armA = (2.0, -0.5);
     armB = (-1.1, 0.4);
@@ -61,6 +72,10 @@ void drawFigure(
   } else {
     armA = (0.3, 0.25);
     armB = (-0.08, 0.15);
+  }
+
+  if (pose != null) {
+    (legA, legB, armA, armB) = (pose.legA, pose.legB, pose.armA, pose.armB);
   }
 
   const hip = Offset(0, -21);
@@ -162,7 +177,7 @@ void drawFigure(
           ..strokeWidth = 0.6
           ..color = const Color(0x66D8D8D8),
       );
-      _eyes(canvas, head, dir, time, angry: false);
+      if (!eyesClosed) _eyes(canvas, head, dir, time, angry: false);
     case Look.feathers:
       // Pankhon ka taaj: sar ke peeche pankhe ki tarah phaile lambe pankh, bandh (band) ke saath
       for (var k = 0; k < 7; k++) {
@@ -179,7 +194,7 @@ void drawFigure(
         ),
         _fill,
       );
-      _eyes(canvas, head, dir, time, angry: true);
+      if (!eyesClosed) _eyes(canvas, head, dir, time, angry: true);
     case Look.shield:
       // Sar ke oopar bandha juda aur chhoti choti
       canvas.drawCircle(head + Offset(-dir * 1.5, -7), 3.2, _fill);
@@ -188,7 +203,7 @@ void drawFigure(
         head + Offset(-dir * 8, -3 + sin(time * 6) * 1.5),
         _stroke(2),
       );
-      _eyes(canvas, head, dir, time, angry: true);
+      if (!eyesClosed) _eyes(canvas, head, dir, time, angry: true);
     case Look.archer:
       // Kalgi: sar ke beech se seedhi khari
       final crest = Path()..moveTo(head.dx - dir * 6, head.dy - 2);
@@ -200,7 +215,7 @@ void drawFigure(
       }
       crest.close();
       canvas.drawPath(crest, _fill);
-      _eyes(canvas, head, dir, time, angry: true);
+      if (!eyesClosed) _eyes(canvas, head, dir, time, angry: true);
   }
 
   // Aagay wala baazu (aur hathiyar)
@@ -238,6 +253,116 @@ void drawFigure(
   // Aagay wali taang (sab se upar)
   _leg(canvas, hip, legA, dir);
   canvas.restore();
+}
+
+/// Maut: jhatka → girna (gravity ki tarah tez hota hua) → zameen se takra kar halka uchhalna →
+/// tarapna (jhatke jo dheere dheere band hon) → saakit. [t] = maut ke baad ka waqt (second),
+/// [fallDir] = kis taraf gira (+1 right). Paon zameen pe tike rehte hain, jism un ke gird ghoomta hai.
+void drawDying(
+  Canvas canvas, {
+  required Look look,
+  required Offset foot,
+  required double dir,
+  required double fallDir,
+  required double t,
+  required double time,
+  double wind = 0,
+}) {
+  const jolt = 0.2, impact = 0.7;
+  // Gira kitna: jhatke ke baad tezi pakarta hua (t^2), aakhir mein 90° — zameen pe let gaya
+  final f = ((t - jolt) / (impact - jolt)).clamp(0.0, 1.0);
+  var angle = fallDir * pi / 2 * 0.94 * f * f;
+  if (t > impact) {
+    final k = t - impact;
+    angle -=
+        fallDir *
+        0.09 *
+        sin(k * 16) *
+        exp(-k * 7); // zameen se takra kar uchhalna
+  }
+
+  // Tarapna: zameen pe jhatke, waqt ke saath kamzor (2 second mein band)
+  final writhe = t > impact ? exp(-(t - impact) * 2.2) : 0.0;
+  double jerk(double freq, double seed) => sin(time * freq + seed) * writhe;
+
+  final FigurePose pose;
+  if (t < jolt) {
+    // Jhatka: jism akarta hai, baazu oopar uchhalte hain, ghutne jawab dete hain
+    final k = t / jolt;
+    pose = FigurePose(
+      (0.25 * k, -0.7 * k),
+      (-0.15 * k, -0.5 * k),
+      (-2.4 * k, 0.4),
+      (2.2 * k, 0.3),
+      lean: -0.15 * k,
+    );
+  } else if (t < impact) {
+    // Girte hue: haath sahara dhoondhte hain, taangen dheeli
+    final w = sin(time * 22) * 0.3;
+    pose = FigurePose(
+      (0.5, -1.0 + w * 0.5),
+      (-0.25, -0.6),
+      (-2.0 + w, 0.5),
+      (1.6 - w, 0.6),
+      lean: -0.1,
+    );
+  } else {
+    // Zameen pe: haath paon phaile, tarapte hue
+    pose = FigurePose(
+      (0.35 + jerk(27, 0) * 0.45, -0.7 + jerk(31, 1) * 0.6),
+      (-0.2 + jerk(23, 2) * 0.35, -0.4 + jerk(29, 3) * 0.5),
+      (-1.6 + jerk(25, 4) * 0.5, 0.5 + jerk(33, 5) * 0.4),
+      (0.45 + jerk(21, 6) * 0.35, 0.5),
+      lean: jerk(19, 7) * 0.06,
+    );
+  }
+
+  canvas.save();
+  // Let'te hue jism ki motaai — thora oopar uthao taake aadha zameen mein na dhanse
+  canvas.translate(foot.dx, foot.dy - 4 * f);
+  canvas.rotate(angle);
+  drawFigure(
+    canvas,
+    look: look,
+    foot: Offset.zero,
+    dir: dir,
+    phase: 0,
+    moving: false,
+    inAir: false,
+    time: time,
+    wind: wind,
+    pose: pose,
+    eyesClosed: t > impact + 0.15,
+  );
+  canvas.restore();
+}
+
+/// Doobna/gaddhay mein girna: haath paon chalaata hua neeche jata hai
+void drawFalling(
+  Canvas canvas, {
+  required Look look,
+  required Offset foot,
+  required double dir,
+  required double time,
+}) {
+  final w = sin(time * 14);
+  drawFigure(
+    canvas,
+    look: look,
+    foot: foot,
+    dir: dir,
+    phase: 0,
+    moving: false,
+    inAir: true,
+    time: time,
+    pose: FigurePose(
+      (0.6 + w * 0.4, -1.1),
+      (-0.4 - w * 0.4, -0.7),
+      (-2.6 + w * 0.6, 0.3),
+      (2.4 - w * 0.6, 0.2),
+      lean: -0.2,
+    ),
+  );
 }
 
 Paint _stroke(double w) => Paint()

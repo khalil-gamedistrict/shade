@@ -95,7 +95,7 @@ class TitleScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'ek shohar ki wapsi',
+                  'run home',
                   style: TextStyle(fontSize: 14, letterSpacing: 4, color: _dim),
                 ),
                 const SizedBox(height: 36),
@@ -114,7 +114,7 @@ class TitleScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  'Tap / Space — Chapter ${next.number} khelo',
+                  'Tap / Space — play Chapter ${next.number}',
                   style: const TextStyle(
                     fontSize: 12,
                     letterSpacing: 2,
@@ -166,7 +166,7 @@ class _ChapterTile extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              done ? '✓' : (chapter.ready ? ' ' : 'jald'),
+              done ? '✓' : (chapter.ready ? ' ' : 'soon'),
               style: const TextStyle(fontSize: 11, color: _dim),
             ),
           ],
@@ -286,7 +286,7 @@ class ComingSoon extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                'jald aa raha hai',
+                'coming soon',
                 style: TextStyle(fontSize: 14, letterSpacing: 3, color: _dim),
               ),
               const SizedBox(height: 28),

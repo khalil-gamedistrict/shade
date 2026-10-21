@@ -26,12 +26,14 @@ class Saw {
 class Mover {
   final Rect base;
   final double dx, dy, speed, phase;
+  final bool log; // darya mein tairta lakkar (rassi wala takhta nahi)
   const Mover(
     this.base, {
     this.dx = 0,
     this.dy = 0,
     this.speed = 1,
     this.phase = 0,
+    this.log = false,
   });
 
   Rect rectAt(double t) {
@@ -65,6 +67,12 @@ class Pendulum {
     return pivot + Offset(sin(a) * length, cos(a) * length);
   }
 }
+
+/// Chapter ka mahaul — painter is ke hisaab se khaas cheezen banata hai
+enum Mood { forest, fire, river, cliffs, home }
+
+/// Maut kaise hui — girne ka andaaz is pe depend karta hai
+enum DeathKind { fall, drown, hazard, spear, caught, burn }
 
 /// Peechha: player [startX] paar kare to jangli shikaari peeche se daurte aate hain
 class Chase {
@@ -121,6 +129,11 @@ class Level {
   final List<Rock> rocks;
   final List<Pendulum> pendulums;
   final Chase? chase;
+  final List<Rect> fires; // zameen pe jalti aag (chhoone se maut)
+  final List<double> huts; // peeche jalti jhonpriyan (sirf manzar)
+  final Mood mood;
+  final double? waterY; // darya: is oonchai pe paani, gire to doob gaye
+  final double? wifeX; // aakhri chapter: gaddhay mein biwi
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -140,6 +153,11 @@ class Level {
     this.rocks = const [],
     this.pendulums = const [],
     this.chase,
+    this.fires = const [],
+    this.huts = const [],
+    this.mood = Mood.forest,
+    this.waterY,
+    this.wifeX,
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });
@@ -352,7 +370,7 @@ class World {
   static const double playerW = 22, playerH = 44;
   // Dheemi, sochi samjhi chaal (Limbo jaisi) aur hawa mein zara der tairti jump
   static const double speed = 150, gravity = 1150, jumpVelocity = 520;
-  static const double respawnDelay = 1.2;
+  static const double respawnDelay = 2.4; // girne aur tarapne ka manzar dikhe
   static const double windPush =
       38; // poori aandhi player ko itna px/s dhakelti hai
   static const double rockGravity = 1100;
@@ -374,6 +392,11 @@ class World {
   late final List<int> rockState;
   late final List<double> rockY, rockVy;
   int? _standingOn; // kis hilte platform pe khara hai
+
+  // Maut ka manzar: kaise mara, kis taraf gira, kab
+  DeathKind deathKind = DeathKind.hazard;
+  double fallDir = 1; // +1 = right ki taraf gira
+  double deathTime = 0;
 
   // Peechha
   static const hunterGaps = [
@@ -485,6 +508,14 @@ class World {
     if (state == PlayerState.won) return;
     if (state == PlayerState.dead) {
       deadTimer -= dt;
+      // Gaddhay mein gira to girta rahe, paani mein gira to aahista doobe
+      if (deathKind == DeathKind.fall) {
+        vy += gravity * dt;
+        pos += Offset(0, vy * dt);
+      } else if (deathKind == DeathKind.drown) {
+        vy = min(vy + gravity * dt, 40);
+        pos += Offset(0, vy * dt);
+      }
       if (deadTimer <= 0) _respawn();
       return;
     }
@@ -557,26 +588,37 @@ class World {
       }
     }
 
-    if (_touchesHazard()) {
-      _die();
+    final death = _hazard();
+    if (death != null) {
+      _die(death);
     } else if (pos.dx >= level.goalX) {
       state = PlayerState.won;
       events.add(GameEvent.win);
     }
   }
 
-  bool _touchesHazard() {
+  DeathKind? _hazard() {
     final r = playerRect.deflate(3); // thori riayat
-    if (pos.dy > level.deathY) return true;
-    if (chaseActive && hunterX >= pos.dx - 26) return true; // pakar liya
+    final facing = facingRight ? 1.0 : -1.0;
+    final water = level.waterY;
+    if (water != null && pos.dy > water + 12) return DeathKind.drown;
+    if (pos.dy > level.deathY) return DeathKind.fall;
+    if (chaseActive && hunterX >= pos.dx - 26) {
+      fallDir = 1; // peeche se waar — aagay muun ke bal
+      return DeathKind.caught;
+    }
     for (final sp in spears) {
       if (!sp.stuck && r.contains(Offset(sp.x, sp.y))) {
         events.add(GameEvent.spearHit);
-        return true;
+        fallDir = sp.vx >= 0 ? 1 : -1; // neze ke zor se usi taraf
+        spears.remove(sp);
+        return DeathKind.spear;
       }
     }
-    if (level.spikes.any(r.overlaps)) return true;
-    if (level.traps.any(r.overlaps)) return true;
+    fallDir = -facing; // baaqi khatre: jhatke se peeche ki taraf
+    if (level.fires.any(r.overlaps)) return DeathKind.burn;
+    if (level.spikes.any(r.overlaps)) return DeathKind.hazard;
+    if (level.traps.any(r.overlaps)) return DeathKind.hazard;
     bool hitsCircle(Offset c, double radius) {
       final nearest = Offset(
         c.dx.clamp(r.left, r.right),
@@ -586,30 +628,34 @@ class World {
     }
 
     for (final p in level.pendulums) {
-      if (hitsCircle(p.bobAt(time), p.radius)) return true;
+      if (hitsCircle(p.bobAt(time), p.radius)) {
+        fallDir = cos(time * p.speed + p.phase) >= 0
+            ? 1
+            : -1; // lakkar jidhar ja raha, udhar dhakka
+        return DeathKind.hazard;
+      }
     }
     for (var i = 0; i < level.rocks.length; i++) {
       final rock = level.rocks[i];
       if (rockState[i] == 1 &&
           hitsCircle(Offset(rock.x, rockY[i]), rock.radius)) {
-        return true;
+        return DeathKind.hazard;
       }
     }
     for (final saw in level.saws) {
-      final c = saw.centerAt(time);
-      final nearest = Offset(
-        c.dx.clamp(r.left, r.right),
-        c.dy.clamp(r.top, r.bottom),
-      );
-      if ((nearest - c).distance < saw.radius) return true;
+      if (hitsCircle(saw.centerAt(time), saw.radius)) return DeathKind.hazard;
     }
-    return false;
+    return null;
   }
 
-  void _die() {
+  void _die(DeathKind kind) {
     state = PlayerState.dead;
+    deathKind = kind;
+    deathTime = time;
     deadTimer = respawnDelay;
     deaths++;
+    hunterMoving = false;
+    vx = 0;
     events.add(GameEvent.death);
   }
 
