@@ -69,7 +69,10 @@ class _GameScreenState extends State<GameScreen>
     last = elapsed;
     final step = dt.clamp(0, 0.05).toDouble();
     world.update(step, input);
-    final size = context.size;
+    // Pehle frame pe screen abhi lay out nahi hui hoti — tab size poochna crash karta hai
+    // aur ticker hamesha ke liye ruk jata hai, is liye pehle hasSize check karo
+    final box = context.findRenderObject() as RenderBox?;
+    final size = box != null && box.hasSize ? box.size : null;
     if (size != null && size.height > 0) {
       final viewW = WorldPainter.viewWidth(size);
       weather.update(step, world, WorldPainter.cameraX(world, viewW), viewW);
