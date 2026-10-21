@@ -3,6 +3,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'game/painter.dart';
+import 'game/sound.dart';
+import 'game/weather.dart';
 import 'game/world.dart';
 
 // CI build ke waqt --dart-define=BUILD_INFO=... se set hota hai
@@ -19,7 +21,8 @@ void main() {
 }
 
 class ShadeApp extends StatelessWidget {
-  const ShadeApp({super.key});
+  final bool sound;
+  const ShadeApp({super.key, this.sound = true});
 
   @override
   Widget build(BuildContext context) {
@@ -27,13 +30,14 @@ class ShadeApp extends StatelessWidget {
       title: 'Shade',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(brightness: Brightness.dark),
-      home: const GameScreen(),
+      home: GameScreen(sound: sound),
     );
   }
 }
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final bool sound; // tests mein band, kyunke wahan audio plugin nahi hota
+  const GameScreen({super.key, this.sound = true});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -47,10 +51,15 @@ class _GameScreenState extends State<GameScreen>
   late final Ticker ticker;
   Duration last = Duration.zero;
   PlayerState shownState = PlayerState.alive;
+  Sound? sound;
+  final scenery = Scenery();
+  final weather = Weather();
 
   @override
   void initState() {
     super.initState();
+    if (widget.sound) sound = Sound()..load();
+    weather.onThunder = (near) => sound?.thunder(near);
     ticker = createTicker(_onFrame)..start();
     HardwareKeyboard.instance.addHandler(_onKey);
   }
@@ -58,7 +67,19 @@ class _GameScreenState extends State<GameScreen>
   void _onFrame(Duration elapsed) {
     final dt = (elapsed - last).inMicroseconds / 1e6;
     last = elapsed;
-    world.update(dt.clamp(0, 0.05), input);
+    final step = dt.clamp(0, 0.05).toDouble();
+    world.update(step, input);
+    final size = context.size;
+    if (size != null && size.height > 0) {
+      final viewW = WorldPainter.viewWidth(size);
+      weather.update(step, world, WorldPainter.cameraX(world, viewW), viewW);
+    }
+    if (input.left || input.right || input.jump) sound?.startLoops();
+    sound?.setWeather(wind: world.windAt(world.pos.dx), rain: weather.rain);
+    for (final e in world.events) {
+      sound?.play(e);
+    }
+    world.events.clear();
     frame.value++;
     if (world.state != shownState) setState(() => shownState = world.state);
   }
@@ -90,6 +111,7 @@ class _GameScreenState extends State<GameScreen>
   @override
   void dispose() {
     ticker.dispose();
+    sound?.dispose();
     HardwareKeyboard.instance.removeHandler(_onKey);
     super.dispose();
   }
@@ -101,7 +123,9 @@ class _GameScreenState extends State<GameScreen>
       body: Stack(
         children: [
           Positioned.fill(
-            child: CustomPaint(painter: WorldPainter(world, repaint: frame)),
+            child: CustomPaint(
+              painter: WorldPainter(world, scenery, weather, repaint: frame),
+            ),
           ),
           Positioned(
             left: 24,
