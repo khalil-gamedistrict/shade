@@ -38,29 +38,30 @@ class FlyingLeaf {
 
 class Weather {
   final _r = Random(3);
+  // Boondein chhoti aur patli, lekin bohot zyada — asli baarish ki tarah ghani
   final layers = [
     RainLayer(
-      maxDrops: 260,
+      maxDrops: 700,
       speed: 520,
-      length: 9,
-      width: 0.7,
-      alpha: 0.16,
+      length: 6,
+      width: 0.5,
+      alpha: 0.15,
       parallax: 0.3,
     ),
     RainLayer(
-      maxDrops: 240,
+      maxDrops: 600,
       speed: 760,
-      length: 16,
-      width: 1.0,
-      alpha: 0.24,
+      length: 10,
+      width: 0.7,
+      alpha: 0.22,
       parallax: 0.6,
     ),
     RainLayer(
-      maxDrops: 200,
+      maxDrops: 480,
       speed: 1050,
-      length: 26,
-      width: 1.4,
-      alpha: 0.38,
+      length: 16,
+      width: 0.95,
+      alpha: 0.33,
       parallax: 1,
       hitsGround: true,
     ),
@@ -144,7 +145,7 @@ class Weather {
   }
 
   void _splash(double x, double y) {
-    if (splashes.length < 220) {
+    if (splashes.length < 350) {
       final n = 2 + _r.nextInt(3);
       splashes.add(
         Splash(
@@ -156,7 +157,7 @@ class Weather {
         ),
       );
     }
-    if (ripples.length < 120 && _r.nextDouble() < 0.5) {
+    if (ripples.length < 160 && _r.nextDouble() < 0.4) {
       ripples.add(Splash(x, y, 4 + _r.nextDouble() * 6, const [], const []));
     }
   }

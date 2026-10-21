@@ -22,6 +22,7 @@ class Scenery {
     thickness: 0.45,
     maxDepth: 6,
     leafiness: 0.3,
+    variants: 8,
   );
   final mid = TreeLayer(
     parallax: 0.5,
@@ -32,6 +33,7 @@ class Scenery {
     maxHeight: 650,
     thickness: 0.65,
     leafiness: 0.5,
+    variants: 8,
   );
   final near = TreeLayer(
     parallax: 1,
@@ -41,7 +43,7 @@ class Scenery {
     minHeight: 430,
     maxHeight: 560,
     thickness: 0.85,
-    maxDepth: 8,
+    maxDepth: 6,
     leafiness: 0.7,
   );
   final front = TreeLayer(
@@ -56,17 +58,60 @@ class Scenery {
     leafiness: 0.5,
   );
 
-  // Door ke darakht itne kam hilte hain ke unki tasveer ek dafa bana kar dobara use karte hain
-  final _farPictures = <int, ui.Picture>{};
-  ui.Picture farPicture(int i) {
-    if (_farPictures.length > 80) _farPictures.clear();
-    return _farPictures.putIfAbsent(i, () {
-      final rec = ui.PictureRecorder();
-      final path = Path();
-      far.tree(i).addTo(path, Offset.zero, 0.1, 0);
-      Canvas(rec).drawPath(path, Paint()..color = far.color);
-      return rec.endRecording();
-    });
+  // Door aur beech ke darakht: har ek ki ek dafa tasveer (image) bana lo, phir har frame
+  // sirf woh tasveer hawa ke hisaab se jhuka kar dikhao. Hazaron shakalein dobara banane se bachte hain.
+  final _images = <TreeLayer, Map<int, (ui.Image, Rect)>>{};
+  double _res = 0;
+
+  void drawCached(
+    Canvas canvas,
+    TreeLayer layer,
+    int i,
+    Offset root,
+    double sway,
+    double res,
+  ) {
+    if ((res - _res).abs() > 0.05) {
+      // Screen ka size badla — tasveerein naye size pe dobara banengi
+      for (final m in _images.values) {
+        for (final (img, _) in m.values) {
+          img.dispose();
+        }
+      }
+      _images.clear();
+      _res = res;
+    }
+    final key = layer.variantOf(i);
+    final (image, bounds) = _images
+        .putIfAbsent(layer, () => {})
+        .putIfAbsent(key, () => _render(layer, key, res));
+    canvas.save();
+    canvas.translate(root.dx, root.dy);
+    canvas.skew(-sway, 0); // oopar ka hissa zyada jhukta hai, jar apni jagah
+    if (layer.mirrored(i)) canvas.scale(-1, 1);
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      bounds,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    canvas.restore();
+  }
+
+  (ui.Image, Rect) _render(TreeLayer layer, int key, double res) {
+    final path = Path();
+    layer.tree(key).addTo(path, Offset.zero, 0, 0);
+    final bounds = path.getBounds().inflate(2);
+    final rec = ui.PictureRecorder();
+    Canvas(rec)
+      ..scale(res)
+      ..translate(-bounds.left, -bounds.top)
+      ..drawPath(path, Paint()..color = layer.color);
+    final image = rec.endRecording().toImageSync(
+      (bounds.width * res).ceil(),
+      (bounds.height * res).ceil(),
+    );
+    return (image, bounds);
   }
 }
 
@@ -96,21 +141,15 @@ class WorldPainter extends CustomPainter {
     canvas.save();
     canvas.scale(scale);
 
-    // Door ke darakht (tasveerein) + door ki baarish
-    for (final (i, x) in scenery.far.visible(
-      camX * scenery.far.parallax - 150,
-      camX * scenery.far.parallax + viewW + 150,
-    )) {
-      canvas.save();
-      canvas.translate(x - camX * scenery.far.parallax, 470);
-      canvas.drawPicture(scenery.farPicture(i));
-      canvas.restore();
-    }
+    // Door ke darakht + door ki baarish
+    final res =
+        scale * 1.25; // tasveer ki resolution (pixels har view unit mein)
+    _cachedLayer(canvas, scenery.far, camX, viewW, 470, wind * 0.4, t, res);
     _rain(canvas, 0);
     _haze(canvas, viewW, 0.18);
 
     // Beech ke darakht — hawa mein hilte hue
-    _treeLayer(canvas, scenery.mid, camX, viewW, 450, wind * 0.8, t);
+    _cachedLayer(canvas, scenery.mid, camX, viewW, 450, wind * 0.8, t, res);
     _rain(canvas, 1);
     _haze(canvas, viewW, 0.12);
 
@@ -209,7 +248,7 @@ class WorldPainter extends CustomPainter {
     );
   }
 
-  void _treeLayer(
+  void _cachedLayer(
     Canvas canvas,
     TreeLayer layer,
     double camX,
@@ -217,14 +256,15 @@ class WorldPainter extends CustomPainter {
     double rootY,
     double wind,
     double t,
+    double res,
   ) {
     final shift = camX * layer.parallax;
-    final path = Path();
-    for (final (i, x) in layer.visible(shift - 300, shift + viewW + 300)) {
-      final sx = x - shift;
-      layer.tree(i).addTo(path, Offset(sx, rootY), wind, t);
+    for (final (i, x) in layer.visible(shift - 250, shift + viewW + 250)) {
+      // Hawa ka jhukaav + har darakht ka apna aahista jhoolna
+      final sway =
+          wind * 0.035 + sin(t * 1.1 + i * 1.7) * 0.008 * (0.4 + wind.abs());
+      scenery.drawCached(canvas, layer, i, Offset(x - shift, rootY), sway, res);
     }
-    canvas.drawPath(path, Paint()..color = layer.color);
   }
 
   /// Saamne ke darakht: player inke peeche aaye to yeh halke ho jaate hain, taake woh chhup na jaye
@@ -259,7 +299,7 @@ class WorldPainter extends CustomPainter {
   ) {
     final layer = scenery.near;
     final path = Path();
-    for (final (i, x) in layer.visible(camX - 300, camX + viewW + 300)) {
+    for (final (i, x) in layer.visible(camX - 250, camX + viewW + 250)) {
       // Sirf zameen pe ugte hain, gaddhay mein nahi
       final ground = world.level.solids.where(
         (s) => x > s.left + 10 && x < s.right - 10 && s.top >= 340,

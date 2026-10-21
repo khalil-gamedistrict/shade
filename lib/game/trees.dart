@@ -113,7 +113,7 @@ class Tree {
   ) {
     final w1 = max(0.35, w * 0.68);
     final int me;
-    if (depth <= 4) {
+    if (depth <= 2) {
       // Moti shaakhen beech se thori mur'ti hain — asli lakri seedhi nahi hoti
       final wm = (w + w1) / 2;
       _nodes.add(
@@ -262,6 +262,9 @@ class TreeLayer {
   final int maxDepth, seed;
   final double leafiness, minHeight, maxHeight, thickness;
   final Color color;
+
+  /// Door ki layers mein sirf itne alag darakht (aadhe ulte/mirror) — memory bachane ke liye
+  final int? variants;
   final _cache = <int, Tree>{};
 
   TreeLayer({
@@ -275,7 +278,11 @@ class TreeLayer {
     this.minHeight = 380,
     this.maxHeight = 520,
     this.thickness = 1,
+    this.variants,
   });
+
+  int variantOf(int i) => variants == null ? i : i % variants!;
+  bool mirrored(int i) => variants != null && (i ~/ variants!).isOdd;
 
   /// Layer ke darakhton ki x jagahen (layer coordinates) jo [from]..[to] mein hain
   Iterable<(int, double)> visible(double from, double to) sync* {
