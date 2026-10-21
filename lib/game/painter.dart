@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'grass.dart';
 import 'trees.dart';
 import 'weather.dart';
 import 'world.dart';
@@ -117,11 +118,22 @@ class WorldPainter extends CustomPainter {
     canvas.save();
     canvas.translate(-camX, 0);
     _nearTrees(canvas, camX, viewW, wind, t);
+    final grass = Path();
     for (final s in world.level.solids) {
-      if (s.right < camX - 20 || s.left > camX + viewW + 20) continue;
+      if (s.right < camX - 40 || s.left > camX + viewW + 40) continue;
       canvas.drawRect(s, _black);
-      _grass(canvas, s, camX, viewW, wind, t);
+      Grass.addTo(
+        grass,
+        s.top,
+        s.left,
+        s.right,
+        camX - 40,
+        camX + viewW + 40,
+        world.windAt,
+        t,
+      );
     }
+    canvas.drawPath(grass, _black);
     for (final s in world.level.spikes) {
       _spikes(canvas, s);
     }
@@ -324,37 +336,6 @@ class WorldPainter extends CustomPainter {
       ], true);
     }
     canvas.drawPath(path, Paint()..color = const Color(0xDD080808));
-  }
-
-  /// Ghaas ke tinke — har tinka hawa mein apni jagah se thora alag hilta hai
-  void _grass(
-    Canvas canvas,
-    Rect s,
-    double camX,
-    double viewW,
-    double wind,
-    double t,
-  ) {
-    final from = max(s.left, camX - 20);
-    final to = min(s.right, camX + viewW + 20);
-    if (from >= to) return;
-    final path = Path()..moveTo(from, s.top + 1);
-    for (var x = (from / 5).floor() * 5.0; x < to; x += 5) {
-      final hash = sin(x * 12.9898) * 43758.5453;
-      final rnd =
-          hash - hash.floorToDouble(); // har tinke ka apna pakka random number
-      final h = 3 + rnd * 9;
-      final w = world.windAt(x);
-      final lean =
-          w * h * 0.55 +
-          sin(t * (2.5 + w.abs() * 4) + x * 0.13) * (0.6 + w.abs() * 1.6);
-      path.lineTo(x + 1, s.top + 1);
-      path.lineTo(x + 2.5 + lean, s.top - h);
-      path.lineTo(x + 4, s.top + 1);
-    }
-    path.lineTo(to, s.top + 1);
-    path.close();
-    canvas.drawPath(path, _black);
   }
 
   void _spikes(Canvas canvas, Rect s) {
