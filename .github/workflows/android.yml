@@ -57,7 +57,7 @@ jobs:
       # 7. APK ko save karo — Actions run page pe "Artifacts" mein milega
       - uses: actions/upload-artifact@v4
         with:
-          name: snake-apk
+          name: shade-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
 
@@ -67,6 +67,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk snake-${{ github.ref_name }}.apk
-          gh release create "${{ github.ref_name }}" "snake-${{ github.ref_name }}.apk" \
-            --title "Snake ${{ github.ref_name }}" --generate-notes
+          cp build/app/outputs/flutter-apk/app-release.apk shade-${{ github.ref_name }}.apk
+          gh release create "${{ github.ref_name }}" "shade-${{ github.ref_name }}.apk" \
+            --title "Shade ${{ github.ref_name }}" --generate-notes
