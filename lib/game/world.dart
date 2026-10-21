@@ -66,6 +66,28 @@ class Pendulum {
   }
 }
 
+/// Peechha: player [startX] paar kare to jangli shikaari peeche se daurte aate hain
+class Chase {
+  final double startX;
+  final double speed; // player (150) se thore dheeme — rukoge to pakar lenge
+  final double maxBehind; // is se zyada peeche nahi rehte (hamesha qareeb)
+  final double throwEvery; // har itne second baad neza
+  const Chase({
+    this.startX = 0,
+    this.speed = 128,
+    this.maxBehind = 470,
+    this.throwEvery = 3.2,
+  });
+}
+
+/// Phenka hua neza: hawa mein kaman ki tarah, zameen pe gir kar gar jata hai
+class Spear {
+  double x, y, vx, vy, age = 0;
+  bool stuck = false;
+  Spear(this.x, this.y, this.vx, this.vy);
+  double get angle => atan2(vy, vx);
+}
+
 /// Level ke saath badalti cheez (hawa, baarish): (x, value) points, beech mein smooth
 class Profile {
   final List<(double, double)> points;
@@ -98,6 +120,7 @@ class Level {
   final List<Mover> movers;
   final List<Rock> rocks;
   final List<Pendulum> pendulums;
+  final Chase? chase;
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -116,6 +139,7 @@ class Level {
     this.movers = const [],
     this.rocks = const [],
     this.pendulums = const [],
+    this.chase,
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });
@@ -190,6 +214,14 @@ class Level {
       ],
       goalX: goal + dx,
       deathY: deathY,
+      chase: chase == null
+          ? null
+          : Chase(
+              startX: max(chase!.startX + dx, 100),
+              speed: chase!.speed,
+              maxBehind: chase!.maxBehind,
+              throwEvery: chase!.throwEvery,
+            ),
       wind: shp(wind),
       rain: shp(rain),
     );
@@ -270,6 +302,7 @@ class Level {
       Offset(5930, 400),
     ],
     goalX: 7150,
+    chase: Chase(startX: 400),
     wind: Profile([
       (0, 0.2),
       (1400, 0.45),
@@ -300,7 +333,20 @@ class Level {
 enum PlayerState { alive, dead, won }
 
 /// Game mein jo kuch hua — UI inhein sun kar sound bajata hai
-enum GameEvent { step, jump, land, death, checkpoint, win, rock }
+enum GameEvent {
+  step,
+  jump,
+  land,
+  death,
+  checkpoint,
+  win,
+  rock,
+  chaseStart,
+  spearThrow,
+  spearHit,
+  spearStick,
+  shout,
+}
 
 class World {
   static const double playerW = 22, playerH = 44;
@@ -328,6 +374,55 @@ class World {
   late final List<int> rockState;
   late final List<double> rockY, rockVy;
   int? _standingOn; // kis hilte platform pe khara hai
+
+  // Peechha
+  static const hunterGaps = [
+    0.0,
+    42.0,
+    86.0,
+  ]; // teen shikaari, aagay wale se itna peeche
+  static const spearGravity = 620.0;
+  bool chaseActive = false;
+  bool hunterMoving = false; // daur rahe hain ya gaddhay ke kinare khare
+  double hunterX = -1000; // sab se aagay wala shikaari
+  double _throwTimer = 0;
+  double _grace = 0; // zinda hone ke baad thori mohlat
+  double _shoutTimer = 2;
+  final spears = <Spear>[];
+  late final List<(double, double)> _bigGaps =
+      _findBigGaps(); // jin gaddhon pe shikaari ruk jate hain
+
+  List<(double, double)> _findBigGaps() {
+    final sorted = [...level.solids]..sort((a, b) => a.left.compareTo(b.left));
+    final out = <(double, double)>[];
+    var right = sorted.first.right;
+    for (final s in sorted.skip(1)) {
+      if (s.left > right &&
+          level.movers.any(
+            (m) => m.base.left < s.left && m.base.right > right,
+          )) {
+        out.add((right, s.left));
+      }
+      right = max(right, s.right);
+    }
+    return out;
+  }
+
+  /// Shikaari ke paon ki oonchai — gaddhay pe ho to chhalaang ki kaman
+  double hunterFootY(double x) {
+    final g = _groundBelow(x);
+    if (g < level.deathY) return g;
+    final sorted = [...level.solids]..sort((a, b) => a.left.compareTo(b.left));
+    Rect? before, after;
+    for (final s in sorted) {
+      if (s.right <= x) before = s;
+      if (s.left >= x && after == null) after = s;
+    }
+    if (before == null || after == null) return 400;
+    final t = (x - before.right) / max(1, after.left - before.right);
+    return min(before.top, after.top) -
+        sin(t * pi) * min(60, (after.left - before.right) * 0.6);
+  }
 
   World([Level? level]) : level = level ?? Level.first() {
     pos = this.level.checkpoints.first;
@@ -401,6 +496,7 @@ class World {
       pos += d;
     }
     _updateRocks(dt);
+    _updateChase(dt);
     final solids = solidsNow();
 
     vx = (input.right ? speed : 0) - (input.left ? speed : 0);
@@ -472,6 +568,13 @@ class World {
   bool _touchesHazard() {
     final r = playerRect.deflate(3); // thori riayat
     if (pos.dy > level.deathY) return true;
+    if (chaseActive && hunterX >= pos.dx - 26) return true; // pakar liya
+    for (final sp in spears) {
+      if (!sp.stuck && r.contains(Offset(sp.x, sp.y))) {
+        events.add(GameEvent.spearHit);
+        return true;
+      }
+    }
     if (level.spikes.any(r.overlaps)) return true;
     if (level.traps.any(r.overlaps)) return true;
     bool hitsCircle(Offset c, double radius) {
@@ -526,10 +629,88 @@ class World {
     }
   }
 
+  void _updateChase(double dt) {
+    final chase = level.chase;
+    if (chase == null) return;
+    if (!chaseActive) {
+      if (pos.dx < chase.startX) return;
+      chaseActive = true;
+      hunterX = pos.dx - chase.maxBehind;
+      _throwTimer = 1.5;
+      events.add(GameEvent.chaseStart);
+    }
+
+    // Daurte aate hain, lekin kabhi bahut peeche nahi rehte
+    final hunterBefore = hunterX;
+    _grace -= dt;
+    final behind = chase.maxBehind + (_grace > 0 ? 180 : 0);
+    hunterX = max(hunterX + chase.speed * dt, pos.dx - behind);
+    // Bare gaddhay (hilte platform wale) paar nahi kar sakte: kinare pe ruk jate hain,
+    // phir jab player kaafi aage nikal jaye to doosre raaste se phir peeche aa jate hain
+    for (final (left, right) in _bigGaps) {
+      if (hunterX > left - 40 && hunterX < right) {
+        if (pos.dx < right + 380) {
+          hunterX = left - 40;
+        } else {
+          hunterX = max(right + 10, pos.dx - behind);
+        }
+      }
+    }
+
+    hunterMoving = hunterX > hunterBefore + 0.01;
+
+    // Beech beech mein jang ki cheekhein
+    _shoutTimer -= dt;
+    if (_shoutTimer <= 0) {
+      _shoutTimer = 3.5 + (sin(time * 3.1) * 0.5 + 0.5) * 4;
+      events.add(GameEvent.shout);
+    }
+
+    // Neze phenkna — player jahan hoga wahan ka andaza laga kar
+    _throwTimer -= dt;
+    final dist = pos.dx - hunterX;
+    if (_throwTimer <= 0 && dist > 110 && dist < 520) {
+      final wobble = sin(time * 7.3) * 0.5 + 0.5; // har dafa thora alag waqt
+      _throwTimer = chase.throwEvery * (0.75 + wobble * 0.5);
+      final sx = hunterX, sy = hunterFootY(hunterX) - 38;
+      final t = (dist / 360).clamp(0.75, 1.3);
+      final tx = pos.dx + vx * t * 0.8, ty = pos.dy - 24;
+      spears.add(
+        Spear(
+          sx,
+          sy,
+          (tx - sx) / t,
+          (ty - sy - 0.5 * spearGravity * t * t) / t,
+        ),
+      );
+      events.add(GameEvent.spearThrow);
+    }
+    for (final sp in spears) {
+      sp.age += dt;
+      if (sp.stuck) continue;
+      sp.vy += spearGravity * dt;
+      sp.x += sp.vx * dt;
+      sp.y += sp.vy * dt;
+      if (sp.y >= _groundBelow(sp.x) ||
+          solidsNow().any((s) => s.contains(Offset(sp.x, sp.y)))) {
+        sp.stuck = true; // zameen ya deewar mein gar gaya
+        events.add(GameEvent.spearStick);
+      }
+    }
+    spears.removeWhere((sp) => sp.age > 6 || sp.y > level.deathY);
+  }
+
   void _respawn() {
     pos = level.checkpoints[checkpoint];
     vx = vy = 0;
     _standingOn = null;
+    // Shikaari phir peeche se — thori mohlat ke saath
+    spears.clear();
+    if (chaseActive) {
+      hunterX = pos.dx - (level.chase?.maxBehind ?? 470) - 180;
+      _throwTimer = 2.5;
+      _grace = 2;
+    }
     // Checkpoint ke aage wale patthar dobara oopar — phir se girenge
     for (var i = 0; i < level.rocks.length; i++) {
       if (level.rocks[i].triggerX > pos.dx) {

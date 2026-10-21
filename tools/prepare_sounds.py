@@ -31,6 +31,14 @@ SOURCES = {
     536843: ("536/536843_2061858", "rain in the forest atmo field recording", "Garuda1982"),
     840628: ("840/840628_16682330", "Closeup Thunder Strike 01", "loganzsound"),
     151447: ("151/151447_2147090", "Long Rumbling Thunder", "billgrip"),
+    # Peechha
+    575447: ("575/575447_2282212", "Tribal Jungle Drum beat", "szegvari"),
+    621352: ("621/621352_13749321", "Male Yelling out a War Cry 3", "WelvynZPorterSamples"),
+    429336: ("429/429336_8649084", "39-gritos hombre", "Tomycatts"),
+    850166: ("850/850166_3552348", "swoosh_bamboo_03", "Evan_McLoud"),
+    850164: ("850/850164_3552348", "swoosh_bamboo_01", "Evan_McLoud"),
+    205938: ("205/205938_3842302", "Arrow Impact", "Twisted_Euphoria"),
+    456037: ("456/456037_6253486", "heavy breathing while running", "florianreichelt"),
 }
 
 
@@ -107,6 +115,16 @@ if __name__ == "__main__":
     loop("forest", 617747, 30, 36)
     loop("wind", 861757, 6, 36)
     loop("rain", 536843, 8, 36)
+
+    # Peechha: jang ki cheekh, beech beech ki cheekhein, neze, dhol, aur hero ki tez saans
+    oneshot("warcry", 621352, 0.1, 6.5, 1.2)
+    for i, (t, length) in enumerate([(2.4, 0.8), (3.8, 0.6), (4.7, 0.9)], 1):
+        oneshot(f"shout{i}", 429336, t, length, 0.25)
+    oneshot("spear_throw1", 850166, 0, 0.41, 0.15)
+    oneshot("spear_throw2", 850164, 0, 0.6, 0.2)
+    oneshot("spear_stick", 205938, 0, 0.6, 0.25)
+    loop("drums", 575447, 6, 36)
+    loop("breath", 456037, 2, 36)
 
     with open(os.path.join(OUT, "CREDITS.md"), "w") as f:
         f.write("# Sound credits\n\nSab recordings [Freesound.org](https://freesound.org) se, "

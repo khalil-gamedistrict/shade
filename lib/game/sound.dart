@@ -7,48 +7,57 @@ import 'world.dart';
 
 class Sound {
   final _r = Random();
-  final _effects = <GameEvent, AudioPlayer>{};
-  final _steps =
-      <AudioPlayer>[]; // 6 alag qadam — har dafa random, taake mashini na lage
-  int _lastStep = -1;
 
-  // Lagataar chalti awaazen: jungle, hawa, baarish
+  // Har event ke liye files ka group (random mein se ek bajti hai, taake mashini na lage) aur volume
+  static const _groups = <GameEvent, (List<String>, double)>{
+    GameEvent.step: (
+      ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'],
+      0.35,
+    ),
+    GameEvent.jump: (['jump'], 0.5),
+    GameEvent.land: (['land'], 0.55),
+    GameEvent.death: (['death'], 0.9),
+    GameEvent.checkpoint: (['checkpoint'], 0.45),
+    GameEvent.win: (['win'], 0.7),
+    GameEvent.rock: (['land'], 1.0), // patthar girne ki dhamak
+    GameEvent.chaseStart: (['warcry'], 0.8),
+    GameEvent.spearThrow: (['spear_throw1', 'spear_throw2'], 0.6),
+    GameEvent.spearHit: (['spear_stick'], 0.8),
+    GameEvent.spearStick: (['spear_stick'], 0.3),
+    GameEvent.shout: (['shout1', 'shout2', 'shout3'], 0.45),
+  };
+  final _players = <String, AudioPlayer>{};
+  final _last = <GameEvent, int>{};
+
+  // Lagataar chalti awaazen: jungle, hawa, baarish, peechhe ka dhol, hero ki saans
   final _forest = AudioPlayer();
   final _wind = AudioPlayer();
   final _rain = AudioPlayer();
+  final _drums = AudioPlayer();
+  final _breath = AudioPlayer();
   final _thunderNear = AudioPlayer();
   final _thunderFar = AudioPlayer();
   bool _loopsStarted = false;
   final _vol = <AudioPlayer, double>{};
 
-  static const _volumes = {
-    GameEvent.jump: 0.5,
-    GameEvent.land: 0.55,
-    GameEvent.death: 0.9,
-    GameEvent.checkpoint: 0.45,
-    GameEvent.win: 0.7,
-    GameEvent.rock: 1.0,
-  };
+  List<AudioPlayer> get _loops => [_forest, _wind, _rain, _drums, _breath];
 
   Future<void> load() async {
-    for (final e in _volumes.keys) {
-      final p = AudioPlayer();
-      await p.setReleaseMode(ReleaseMode.stop);
-      // Patthar girne pe zameen pe girne wali awaaz hi, zor se
-      final file = e == GameEvent.rock ? 'land' : e.name;
-      await p.setSource(AssetSource('sounds/$file.ogg'));
-      _effects[e] = p;
-    }
-    for (var i = 1; i <= 6; i++) {
-      final p = AudioPlayer();
-      await p.setReleaseMode(ReleaseMode.stop);
-      await p.setSource(AssetSource('sounds/step$i.ogg'));
-      _steps.add(p);
+    for (final (files, _) in _groups.values) {
+      for (final f in files) {
+        if (_players.containsKey(f)) continue;
+        final p = AudioPlayer();
+        await p.setReleaseMode(ReleaseMode.stop);
+        await p.setSource(AssetSource('sounds/$f.ogg'));
+        _players[f] = p;
+      }
     }
     for (final (p, name) in [
       (_forest, 'forest'),
       (_wind, 'wind'),
       (_rain, 'rain'),
+      (_drums, 'drums'),
+      (_breath, 'breath'),
     ]) {
       await p.setReleaseMode(ReleaseMode.loop);
       await p.setSource(AssetSource('sounds/$name.ogg'));
@@ -62,7 +71,7 @@ class Sound {
   void startLoops() {
     if (_loopsStarted) return;
     _loopsStarted = true;
-    for (final p in [_forest, _wind, _rain]) {
+    for (final p in _loops) {
       p
         ..setVolume(0)
         ..resume();
@@ -75,6 +84,17 @@ class Sound {
     _fade(_forest, 0.4 * (1 - rain * 0.6));
     _fade(_wind, 0.06 + 0.6 * min(1.0, wind.abs()));
     _fade(_rain, 0.8 * rain);
+  }
+
+  /// Peechha: shikaari jitne qareeb, dhol utna tez; daurte hue hero ki saans
+  void setChase({
+    required bool active,
+    required double closeness,
+    required bool running,
+  }) {
+    if (!_loopsStarted) return;
+    _fade(_drums, active ? 0.2 + 0.5 * closeness.clamp(0, 1) : 0);
+    _fade(_breath, active && running ? 0.6 : 0);
   }
 
   // Volume aahista badlo, aur sirf tab bhejo jab farq mehsoos ho (har frame bhejna mehnga hai)
@@ -99,33 +119,25 @@ class Sound {
   }
 
   void play(GameEvent e) {
-    final AudioPlayer? player;
-    var volume = 0.0;
-    if (e == GameEvent.step) {
-      if (_steps.isEmpty) return;
-      var i = _r.nextInt(_steps.length);
-      if (i == _lastStep) i = (i + 1) % _steps.length;
-      _lastStep = i;
-      player = _steps[i];
-      volume = 0.3 + _r.nextDouble() * 0.15;
-    } else {
-      player = _effects[e];
-      volume = _volumes[e] ?? 0.5;
-    }
+    final group = _groups[e];
+    if (group == null) return;
+    final (files, volume) = group;
+    // Pichhli dafa wali file dobara na bajao
+    var i = _r.nextInt(files.length);
+    if (files.length > 1 && i == _last[e]) i = (i + 1) % files.length;
+    _last[e] = i;
+    final player = _players[files[i]];
     if (player == null) return;
     player
       ..stop()
-      ..setVolume(volume)
+      ..setVolume(volume * (0.85 + _r.nextDouble() * 0.3))
       ..resume();
   }
 
   void dispose() {
     for (final p in [
-      ..._effects.values,
-      ..._steps,
-      _forest,
-      _wind,
-      _rain,
+      ..._players.values,
+      ..._loops,
       _thunderNear,
       _thunderFar,
     ]) {

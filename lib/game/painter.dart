@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'figures.dart';
 import 'grass.dart';
 import 'jungle.dart';
 import 'weather.dart';
@@ -99,7 +100,9 @@ class WorldPainter extends CustomPainter {
       );
     }
     _goalLight(canvas);
+    _hunters(canvas, camX, viewW);
     if (world.state != PlayerState.dead) _player(canvas);
+    _spears(canvas);
     _splashes(canvas);
     canvas.restore();
 
@@ -391,180 +394,65 @@ class WorldPainter extends CustomPainter {
   }
 
   void _player(Canvas canvas) {
-    final p = world.pos;
-    final dir = world.facingRight ? 1.0 : -1.0;
-    final phase = world.walkPhase;
-    final walking = world.grounded && world.vx != 0;
-    final inAir = !world.grounded;
-    final x = p.dx, y = p.dy;
-
-    // Chalte waqt sar thora upar neeche, khare hue saans lene se halka sa
-    final bob = walking
-        ? -sin(phase * 2).abs() * 1.2
-        : sin(world.time * 2) * 0.5;
-
-    // Taangen: (ran ka angle, ghutne ka mor)
-    final s = sin(phase);
-    final (double, double) legA, legB;
-    if (inAir) {
-      legA = (0.8, -1.3); // aagay wali taang sameti hui
-      legB = (-0.35, -0.7);
-    } else if (walking) {
-      legA = (s * 0.55, -max(0.0, cos(phase)) * 0.9);
-      legB = (-s * 0.55, -max(0.0, -cos(phase)) * 0.9);
-    } else {
-      legA = (0.14, -0.05);
-      legB = (-0.12, 0);
-    }
-    // Baazu: taangon ke ulat jhoolte hain
-    final (double, double) armA, armB;
-    if (inAir) {
-      armA = (2.0, -0.5);
-      armB = (-1.1, 0.4);
-    } else if (walking) {
-      armA = (-s * 0.6, 0.5);
-      armB = (s * 0.6, 0.5);
-    } else {
-      armA = (0.3, 0.25);
-      armB = (-0.08, 0.15);
-    }
-
-    final hip = Offset(x, y - 21);
-    final shoulder = Offset(x + dir * 0.5, y - 35 + bob * 0.5);
-
-    // Kamar pe bandha neza — shikaari ki pehchaan (sab se peeche)
-    canvas.drawLine(
-      Offset(x - dir * 9, y - 12 + bob * 0.5),
-      Offset(x + dir * 5, y - 50 + bob * 0.5),
-      Paint()
-        ..color = const Color(0xFF070707)
-        ..strokeWidth = 1.6,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(x + dir * 5, y - 50 + bob * 0.5)
-        ..lineTo(x + dir * 3.2, y - 45 + bob * 0.5)
-        ..lineTo(x + dir * 6.6, y - 45.6 + bob * 0.5)
-        ..close(),
-      _black,
-    );
-
-    // Peeche wale baazu aur taang pehle (thore patle), taake gehraai lage
-    _limb(canvas, shoulder, armB, 7.5, 7, 2.5, dir);
-    _leg(canvas, hip, legB, dir);
-
-    // Jism — kurta jo neeche se thora phaila hua hai
-    final torso = Path()
-      // Chaure kandhe, patli kamar, kamar pe lipta kapra
-      ..moveTo(x - 5.5, y - 36 + bob * 0.5)
-      ..quadraticBezierTo(x, y - 38 + bob * 0.5, x + 5.5, y - 36 + bob * 0.5)
-      ..lineTo(x + 3.8, y - 22)
-      ..lineTo(x + 5.2, y - 16)
-      ..quadraticBezierTo(x, y - 15, x - 5.2, y - 16)
-      ..lineTo(x - 3.8, y - 22)
-      ..close();
-    canvas.drawPath(torso, _black);
-
-    _leg(canvas, hip, legA, dir);
-    _limb(canvas, shoulder, armA, 7.5, 7, 2.9, dir);
-
-    // Sar — jawan aadmi ka, jism ke hisaab se chhota
-    final head = Offset(x + dir * 1.2, y - 44.5 + bob);
-    canvas.drawCircle(head, 6.3, _black);
-    // Gardan
-    canvas.drawRect(
-      Rect.fromCenter(
-        center: Offset(x + dir * 0.8, y - 38.5 + bob),
-        width: 3.6,
-        height: 4,
-      ),
-      _black,
-    );
-
-    // Baal — oopar bikhre, peeche bandhi choti jo hawa mein lehrati hai
-    final hair = Path();
-    const spikes = 6;
-    for (var k = 0; k <= spikes * 2; k++) {
-      final t = -pi * 0.92 + k * (pi * 0.62) / (spikes * 2);
-      final back = 1 - k / (spikes * 2); // peeche wale baal lambe
-      final r = k.isEven ? 5.8 : 7.2 + back * 1.6 + (k % 4 == 1 ? 0.6 : 0);
-      final pt =
-          head +
-          Offset(
-            cos(t) * r * dir - dir * (k.isOdd ? back * 1.0 : 0),
-            sin(t) * r,
-          );
-      k == 0 ? hair.moveTo(pt.dx, pt.dy) : hair.lineTo(pt.dx, pt.dy);
-    }
-    hair.close();
-    canvas.drawPath(hair, _black);
-    final wind = world.windAt(x);
-    final tail = head + Offset(-dir * 6, -2);
-    final tip =
-        tail + Offset(-dir * 7 + wind * 4, 5 + sin(world.time * 5) * 1.2);
-    canvas.drawLine(
-      tail,
-      tip,
-      Paint()
-        ..color = const Color(0xFF070707)
-        ..strokeWidth = 2.6
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Badi chamakti aankhen — har kuch second baad palak jhapakti hain
-    final blink = world.time % 3.7 > 3.57;
-    final eye = Paint()..color = Colors.white;
-    final glow = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-    for (final (dx, w) in [(2.4, 2.2), (4.9, 1.9)]) {
-      final c = head + Offset(dir * dx, -0.5);
-      final r = Rect.fromCenter(center: c, width: w, height: blink ? 0.5 : 3.0);
-      canvas.drawOval(r.inflate(1), glow);
-      canvas.drawOval(r, eye);
-    }
-  }
-
-  void _leg(Canvas canvas, Offset hip, (double, double) a, double dir) {
-    final foot = _limb(canvas, hip, a, 10.5, 10.8, 3.6, dir);
-    // Chhota sa joota, aagay ki taraf
-    canvas.drawLine(
-      foot,
-      foot + Offset(dir * 3.2, 0),
-      Paint()
-        ..color = const Color(0xFF070707)
-        ..strokeWidth = 3.0
-        ..strokeCap = StrokeCap.round,
+    drawFigure(
+      canvas,
+      look: Look.hero,
+      foot: world.pos,
+      dir: world.facingRight ? 1 : -1,
+      phase: world.walkPhase,
+      moving: world.grounded && world.vx != 0,
+      inAir: !world.grounded,
+      time: world.time,
+      wind: world.windAt(world.pos.dx),
     );
   }
 
-  /// Do hisson wala azoo (ran+pindli ya baazu+kalaai). Angle neeche se naapa jata hai,
-  /// positive = jidhar munh hai. Haath/paon ki jagah wapas karta hai.
-  Offset _limb(
-    Canvas canvas,
-    Offset start,
-    (double, double) a,
-    double l1,
-    double l2,
-    double width,
-    double dir,
-  ) {
-    final joint = start + Offset(sin(a.$1) * l1 * dir, cos(a.$1) * l1);
-    final end =
-        joint + Offset(sin(a.$1 + a.$2) * l2 * dir, cos(a.$1 + a.$2) * l2);
-    final paint = Paint()
+  /// Peeche daurte jangli shikaari
+  void _hunters(Canvas canvas, double camX, double viewW) {
+    if (!world.chaseActive) return;
+    const looks = [Look.feathers, Look.shield, Look.archer];
+    for (var i = 0; i < World.hunterGaps.length; i++) {
+      final x = world.hunterX - World.hunterGaps[i];
+      if (x < camX - 60 || x > camX + viewW + 60) continue;
+      final footY = world.hunterFootY(x);
+      final onGround = world.level.solids.any(
+        (s) => x >= s.left && x <= s.right && (s.top - footY).abs() < 1,
+      );
+      drawFigure(
+        canvas,
+        look: looks[i],
+        foot: Offset(x, footY),
+        dir: 1,
+        phase: world.time * 9.5 + i * 1.7,
+        moving: world.hunterMoving,
+        inAir: !onGround,
+        time: world.time + i,
+        wind: world.windAt(x),
+        scale: 1.06,
+      );
+    }
+  }
+
+  /// Hawa mein ya zameen mein gare neze
+  void _spears(Canvas canvas) {
+    final shaft = Paint()
       ..color = const Color(0xFF070707)
-      ..strokeWidth = width
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(
-      Path()
-        ..moveTo(start.dx, start.dy)
-        ..lineTo(joint.dx, joint.dy)
-        ..lineTo(end.dx, end.dy),
-      paint..style = PaintingStyle.stroke,
-    );
-    return end;
+      ..strokeWidth = 1.7
+      ..strokeCap = StrokeCap.round;
+    for (final sp in world.spears) {
+      final d = Offset(cos(sp.angle), sin(sp.angle));
+      final tip = Offset(sp.x, sp.y);
+      canvas.drawLine(tip - d * 38, tip, shaft);
+      final n = Offset(-d.dy, d.dx);
+      canvas.drawPath(
+        Path()..addPolygon([
+          tip + d * 5,
+          tip - d * 2 + n * 2.4,
+          tip - d * 2 - n * 2.4,
+        ], true),
+        _black,
+      );
+    }
   }
 
   void _fogAndVignette(Canvas canvas, Size size) {

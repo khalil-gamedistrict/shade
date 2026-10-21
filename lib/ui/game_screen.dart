@@ -65,6 +65,11 @@ class _GameScreenState extends State<GameScreen>
     }
     if (input.left || input.right || input.jump) sound?.startLoops();
     sound?.setWeather(wind: world.windAt(world.pos.dx), rain: weather.rain);
+    sound?.setChase(
+      active: world.chaseActive && world.state == PlayerState.alive,
+      closeness: 1 - (world.pos.dx - world.hunterX) / 470,
+      running: world.vx != 0,
+    );
     for (final e in world.events) {
       sound?.play(e);
     }

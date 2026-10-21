@@ -16,3 +16,10 @@ Sab recordings [Freesound.org](https://freesound.org) se, license **CC0 1.0 (pub
 - [rain in the forest atmo field recording](https://freesound.org/s/536843/) — Garuda1982
 - [Closeup Thunder Strike 01](https://freesound.org/s/840628/) — loganzsound
 - [Long Rumbling Thunder](https://freesound.org/s/151447/) — billgrip
+- [Tribal Jungle Drum beat](https://freesound.org/s/575447/) — szegvari
+- [Male Yelling out a War Cry 3](https://freesound.org/s/621352/) — WelvynZPorterSamples
+- [39-gritos hombre](https://freesound.org/s/429336/) — Tomycatts
+- [swoosh_bamboo_03](https://freesound.org/s/850166/) — Evan_McLoud
+- [swoosh_bamboo_01](https://freesound.org/s/850164/) — Evan_McLoud
+- [Arrow Impact](https://freesound.org/s/205938/) — Twisted_Euphoria
+- [heavy breathing while running](https://freesound.org/s/456037/) — florianreichelt

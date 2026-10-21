@@ -1,0 +1,362 @@
+// Insaani silhouettes: hero aur jangli shikaari. Sab ka ek hi daurne wala jism (aagay jhuka hua,
+// oonche ghutne, zor se hilte baazu), phir har ek ki pehchaan alag — baal, taaj, hathiyar.
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+enum Look {
+  hero, // lambe khule baal, kaan mein gol baali, langot
+  feathers, // pankhon wala taaj, neza
+  shield, // sar pe juda, gol dhaal, neza
+  archer, // kalgi (mohawk), kaman, peeth pe tarkash
+}
+
+const _ink = Color(0xFF070707);
+final _fill = Paint()..color = _ink;
+
+/// [foot]: paon ki jagah, [dir]: 1 = right ki taraf munh, [phase]: daud ka chakkar
+void drawFigure(
+  Canvas canvas, {
+  required Look look,
+  required Offset foot,
+  required double dir,
+  required double phase,
+  required bool moving,
+  required bool inAir,
+  required double time,
+  double wind = 0,
+  double scale = 1,
+}) {
+  canvas.save();
+  canvas.translate(foot.dx, foot.dy);
+  canvas.scale(scale);
+  final hero = look == Look.hero;
+
+  final s = sin(phase), c = cos(phase);
+  final bob = moving ? -sin(phase * 2).abs() * 1.6 : sin(time * 2) * 0.5;
+  final lean = moving
+      ? 0.17
+      : (inAir ? 0.06 : 0.0); // daurte waqt aagay jhuka hua
+
+  // Taangen: (ran ka angle, ghutne ka mor)
+  final (double, double) legA, legB;
+  if (inAir) {
+    legA = (0.95, -1.45);
+    legB = (-0.45, -0.85);
+  } else if (moving) {
+    legA = (s * 0.78, -max(0.0, c) * 1.3);
+    legB = (-s * 0.78, -max(0.0, -c) * 1.3);
+  } else {
+    legA = (0.14, -0.05);
+    legB = (-0.12, 0);
+  }
+  // Baazu: kohni muri hui, taangon ke ulat zor se jhoolte
+  final (double, double) armA, armB;
+  if (inAir) {
+    armA = (2.0, -0.5);
+    armB = (-1.1, 0.4);
+  } else if (moving) {
+    armA = (-s * 0.95, 1.25);
+    armB = (s * 0.95, 1.25);
+  } else {
+    armA = (0.3, 0.25);
+    armB = (-0.08, 0.15);
+  }
+
+  const hip = Offset(0, -21);
+  final shoulder = Offset(dir * 0.5, -35 + bob * 0.5);
+
+  // Peeche wali taang
+  _leg(canvas, hip, legB, dir);
+
+  // Oopar ka jism aagay jhukta hai (kulhe ke gird)
+  canvas.save();
+  canvas.translate(hip.dx, hip.dy);
+  canvas.rotate(dir * lean);
+  canvas.translate(-hip.dx, -hip.dy);
+
+  final backHand = _limb(canvas, shoulder, armB, 7.5, 7, 2.5, dir);
+  if (look == Look.shield) {
+    // Gol dhaal peeche wale baazu pe
+    canvas.drawCircle(backHand + Offset(-dir * 1, -2), 8.5, _fill);
+  }
+  if (look == Look.archer) {
+    // Peeth pe tarkash (teer daan) aur us mein teer
+    final q = Offset(-dir * 4, -33 + bob * 0.5);
+    canvas.drawPath(
+      Path()..addPolygon([
+        q,
+        q + Offset(-dir * 4, 2),
+        q + Offset(-dir * 1, 16),
+        q + Offset(dir * 3, 14),
+      ], true),
+      _fill,
+    );
+    for (var k = 0; k < 3; k++) {
+      canvas.drawLine(
+        q + Offset(-dir * k * 1.4, 0),
+        q + Offset(-dir * (2 + k * 1.4), -6),
+        _stroke(1),
+      );
+    }
+  }
+
+  // Dhar: chaure kandhe, patli kamar (shikaari thore bhaari)
+  final w = hero ? 5.5 : 6.3;
+  canvas.drawPath(
+    Path()
+      ..moveTo(-w, -36 + bob * 0.5)
+      ..quadraticBezierTo(0, -38 + bob * 0.5, w, -36 + bob * 0.5)
+      ..lineTo(3.9, -22)
+      ..lineTo(4.4, -18)
+      ..lineTo(-4.4, -18)
+      ..lineTo(-3.9, -22)
+      ..close(),
+    _fill,
+  );
+
+  // Langot: aagay aur peeche latakte kapre — daurte waqt peeche ki taraf lehrate hain
+  final flap = moving ? sin(phase * 2) * 1.5 - 2.5 : wind * 1.5;
+  for (final side in [1.0, -1.0]) {
+    final x0 = dir * side * 0.5;
+    canvas.drawPath(
+      Path()
+        ..moveTo(x0 + dir * side * 0.5, -19)
+        ..lineTo(x0 + dir * side * 4.5, -19)
+        ..lineTo(
+          x0 + dir * (side * 3 + flap * (side > 0 ? 0.6 : 1.2)),
+          side > 0 ? -10 : -11.5,
+        )
+        ..lineTo(
+          x0 + dir * (side * 1 + flap * (side > 0 ? 0.6 : 1.2)),
+          side > 0 ? -10.5 : -12,
+        )
+        ..close(),
+      _fill,
+    );
+  }
+
+  // Gardan aur sar
+  final head = Offset(dir * 1.2, -44.5 + bob);
+  canvas.drawRect(
+    Rect.fromCenter(
+      center: Offset(dir * 0.8, -38.5 + bob),
+      width: 3.6,
+      height: 4,
+    ),
+    _fill,
+  );
+  canvas.drawCircle(head, 6.3, _fill);
+
+  switch (look) {
+    case Look.hero:
+      _longHair(canvas, head, dir, moving, time, wind);
+      // Kaan mein gol baali (ear plug) — halki si chamak ke saath
+      final ear = head + Offset(-dir * 0.6, 1.4);
+      canvas.drawCircle(ear, 2.0, _fill);
+      canvas.drawCircle(
+        ear,
+        1.3,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6
+          ..color = const Color(0x66D8D8D8),
+      );
+      _eyes(canvas, head, dir, time, angry: false);
+    case Look.feathers:
+      // Pankhon ka taaj: sar ke peeche pankhe ki tarah phaile lambe pankh, bandh (band) ke saath
+      for (var k = 0; k < 7; k++) {
+        final a = -dir * (-0.35 + k * 0.27) + sin(time * 3 + k) * 0.04;
+        final base = head + Offset(-dir * 2.5, -2.5);
+        final len = 19.0 + (3 - (k - 3).abs()) * 2.5;
+        canvas.drawPath(_feather(base, a, len), _fill);
+      }
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: head + const Offset(0, -3.8),
+          width: 13.5,
+          height: 2.6,
+        ),
+        _fill,
+      );
+      _eyes(canvas, head, dir, time, angry: true);
+    case Look.shield:
+      // Sar ke oopar bandha juda aur chhoti choti
+      canvas.drawCircle(head + Offset(-dir * 1.5, -7), 3.2, _fill);
+      canvas.drawLine(
+        head + Offset(-dir * 2.5, -7),
+        head + Offset(-dir * 8, -3 + sin(time * 6) * 1.5),
+        _stroke(2),
+      );
+      _eyes(canvas, head, dir, time, angry: true);
+    case Look.archer:
+      // Kalgi: sar ke beech se seedhi khari
+      final crest = Path()..moveTo(head.dx - dir * 6, head.dy - 2);
+      for (var k = 0; k <= 8; k++) {
+        final a = -pi / 2 - dir * (1.2 - k * 0.3);
+        final r = k.isEven ? 6.5 : 10.5;
+        final pt = head + Offset(cos(a) * r, sin(a) * r);
+        crest.lineTo(pt.dx, pt.dy);
+      }
+      crest.close();
+      canvas.drawPath(crest, _fill);
+      _eyes(canvas, head, dir, time, angry: true);
+  }
+
+  // Aagay wala baazu (aur hathiyar)
+  final hand = _limb(canvas, shoulder, armA, 7.5, 7, 2.9, dir);
+  if (look == Look.feathers || look == Look.shield) {
+    // Neza: haath se aagay-oopar ki taraf
+    final a = -0.35;
+    final d = Offset(cos(a) * dir, sin(a));
+    final tail = hand - d * 20, tip = hand + d * 30;
+    canvas.drawLine(tail, tip, _stroke(1.6));
+    final n = Offset(-d.dy, d.dx);
+    canvas.drawPath(
+      Path()..addPolygon([tip + d * 6, tip + n * 2.2, tip - n * 2.2], true),
+      _fill,
+    );
+  }
+  if (look == Look.archer) {
+    // Kaman: aagay wale haath mein, dhanush ki shakal
+    final bow = Path()..moveTo(hand.dx - dir * 2, hand.dy - 14);
+    bow.quadraticBezierTo(
+      hand.dx + dir * 9,
+      hand.dy,
+      hand.dx - dir * 2,
+      hand.dy + 14,
+    );
+    canvas.drawPath(bow, _stroke(1.8)..style = PaintingStyle.stroke);
+    canvas.drawLine(
+      Offset(hand.dx - dir * 2, hand.dy - 14),
+      Offset(hand.dx - dir * 2, hand.dy + 14),
+      _stroke(0.6),
+    );
+  }
+  canvas.restore();
+
+  // Aagay wali taang (sab se upar)
+  _leg(canvas, hip, legA, dir);
+  canvas.restore();
+}
+
+Paint _stroke(double w) => Paint()
+  ..color = _ink
+  ..strokeWidth = w
+  ..strokeCap = StrokeCap.round;
+
+/// Lambe khule baal: sar ke peeche se latakti latein, daurte waqt peeche ki taraf lehrati
+void _longHair(
+  Canvas canvas,
+  Offset head,
+  double dir,
+  bool moving,
+  double time,
+  double wind,
+) {
+  // Sar pe baalon ki topi
+  canvas.drawPath(
+    Path()..addArc(
+      Rect.fromCircle(center: head + const Offset(0, -0.5), radius: 7),
+      pi * 0.9,
+      pi * 1.3,
+    ),
+    _fill,
+  );
+  for (var k = 0; k < 5; k++) {
+    final root = head + Offset(-dir * (3 + k * 0.6), -4 + k * 1.6);
+    final len = 13.0 + k * 1.5;
+    // Daurte waqt latein peeche ki taraf udti hain, khare hue neeche latakti hain
+    final stream = moving ? 0.85 : 0.25 + wind.abs() * 0.3;
+    final wave = sin(time * (moving ? 13 : 3) + k * 1.3) * (moving ? 2.2 : 0.8);
+    final end =
+        root +
+        Offset(-dir * len * stream + wind * 3, len * (1 - stream) + 3 + wave);
+    final ctrl = root + Offset(-dir * len * 0.45, len * 0.2 + wave * 0.5);
+    canvas.drawPath(
+      Path()
+        ..moveTo(root.dx, root.dy)
+        ..quadraticBezierTo(ctrl.dx, ctrl.dy, end.dx, end.dy),
+      Paint()
+        ..color = _ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4 - k * 0.25
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+}
+
+Path _feather(Offset base, double a, double len) {
+  final d = Offset(sin(a), -cos(a));
+  final n = Offset(-d.dy, d.dx);
+  final tip = base + d * len;
+  final mid = base + d * len * 0.6;
+  // Pankh: neeche patli dandi, oopar chaura, nok gol si
+  return Path()..addPolygon([
+    base + n * 0.6,
+    mid + n * 2.6,
+    tip + n * 0.8,
+    tip - n * 0.8,
+    mid - n * 2.6,
+    base - n * 0.6,
+  ], true);
+}
+
+/// Hero ki aankhen badi aur chamakti; shikaariyon ki patli, ghusse wali
+void _eyes(
+  Canvas canvas,
+  Offset head,
+  double dir,
+  double time, {
+  required bool angry,
+}) {
+  final blink = !angry && time % 3.7 > 3.57;
+  final eye = Paint()..color = angry ? const Color(0xFFD9D9D9) : Colors.white;
+  final glow = Paint()
+    ..color = Colors.white.withValues(alpha: angry ? 0.2 : 0.35)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+  for (final (dx, w) in [(2.4, 2.2), (4.9, 1.9)]) {
+    final c = head + Offset(dir * dx, angry ? -1 : -0.5);
+    final r = Rect.fromCenter(
+      center: c,
+      width: w + (angry ? 0.6 : 0),
+      height: blink ? 0.5 : (angry ? 1.1 : 3.0),
+    );
+    canvas.drawOval(r.inflate(1), glow);
+    canvas.drawOval(r, eye);
+  }
+}
+
+void _leg(Canvas canvas, Offset hip, (double, double) a, double dir) {
+  final foot = _limb(canvas, hip, a, 10.5, 10.8, 3.6, dir);
+  canvas.drawLine(foot, foot + Offset(dir * 3.2, 0), _stroke(3.0));
+}
+
+/// Do hisson wala azoo (ran+pindli ya baazu+kalaai). Angle neeche se naapa jata hai,
+/// positive = jidhar munh hai. Haath/paon ki jagah wapas karta hai.
+Offset _limb(
+  Canvas canvas,
+  Offset start,
+  (double, double) a,
+  double l1,
+  double l2,
+  double width,
+  double dir,
+) {
+  final joint = start + Offset(sin(a.$1) * l1 * dir, cos(a.$1) * l1);
+  final end =
+      joint + Offset(sin(a.$1 + a.$2) * l2 * dir, cos(a.$1 + a.$2) * l2);
+  canvas.drawPath(
+    Path()
+      ..moveTo(start.dx, start.dy)
+      ..lineTo(joint.dx, joint.dy)
+      ..lineTo(end.dx, end.dy),
+    Paint()
+      ..color = _ink
+      ..strokeWidth = width
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke,
+  );
+  return end;
+}

@@ -251,6 +251,82 @@ void main() {
     }
     expect(chapters.length, 6);
   });
+
+  group('peechha', () {
+    Level chaseLevel() => const Level(
+      solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+      spikes: [],
+      saws: [],
+      checkpoints: [Offset(100, 400)],
+      goalX: 2900,
+      chase: Chase(startX: 100),
+    );
+
+    test('khara rahe to shikaari pakar lete hain', () {
+      final w = World(chaseLevel());
+      w.update(0.1, Input());
+      expect(w.chaseActive, isTrue);
+      expect(w.events, contains(GameEvent.chaseStart));
+      w.update(5, Input());
+      expect(
+        w.deaths,
+        greaterThanOrEqualTo(1),
+      ); // pakra gaya (phir checkpoint pe zinda)
+    });
+
+    test('daurta rahe to shikaari nahi pakar paate', () {
+      final w = World(chaseLevel());
+      final run = Input()..right = true;
+      for (var i = 0; i < 100; i++) {
+        w.update(0.1, run);
+        w.spears.clear(); // sirf daud naap rahe hain, neze nahi
+      }
+      expect(w.state, PlayerState.alive);
+      expect(w.pos.dx - w.hunterX, greaterThan(26));
+    });
+
+    test('shikaari neze phenkte hain, aur khare player ko lagta hai', () {
+      final w = World(chaseLevel());
+      var thrown = false;
+      var hit = false;
+      for (var i = 0; i < 40 && w.state == PlayerState.alive; i++) {
+        w.update(0.1, Input());
+        thrown = thrown || w.events.contains(GameEvent.spearThrow);
+        hit = hit || w.events.contains(GameEvent.spearHit);
+      }
+      expect(thrown, isTrue);
+      expect(hit, isTrue);
+    });
+
+    test('bare gaddhay (hilte platform wale) pe shikaari ruk jate hain', () {
+      const level = Level(
+        solids: [
+          Rect.fromLTWH(-1000, 400, 1500, 200),
+          Rect.fromLTWH(800, 400, 2000, 200),
+        ],
+        spikes: [],
+        saws: [],
+        movers: [Mover(Rect.fromLTWH(600, 380, 80, 18))],
+        checkpoints: [Offset(100, 400)],
+        goalX: 2700,
+        chase: Chase(startX: 100),
+      );
+      final w = World(level)..update(0.1, Input());
+      w.pos = const Offset(900, 400); // player gaddha paar kar chuka
+      w.update(0.5, Input());
+      expect(w.hunterX, lessThanOrEqualTo(500 - 40));
+    });
+
+    test('marne ke baad shikaari mohlat dete hain', () {
+      final w = World(chaseLevel());
+      while (w.state == PlayerState.alive) {
+        w.update(0.05, Input()); // khara raha, pakra jayega
+      }
+      w.update(World.respawnDelay + 0.05, Input());
+      expect(w.state, PlayerState.alive);
+      expect(w.pos.dx - w.hunterX, greaterThan(500));
+    });
+  });
 }
 
 void expectJumpable(Level level) {
