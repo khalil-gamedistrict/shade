@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shade/game/chapters.dart';
+import 'package:shade/game/levels.dart';
 import 'package:shade/game/weather.dart';
 import 'package:shade/game/world.dart';
 import 'package:shade/main.dart';
@@ -325,6 +326,74 @@ void main() {
       w.update(World.respawnDelay + 0.05, Input());
       expect(w.state, PlayerState.alive);
       expect(w.pos.dx - w.hunterX, greaterThan(500));
+    });
+  });
+
+  group('maut aur naye chapters', () {
+    test('aag chhoone se jal kar marta hai', () {
+      const level = Level(
+        solids: [Rect.fromLTWH(-500, 400, 2000, 200)],
+        spikes: [],
+        saws: [],
+        fires: [Rect.fromLTWH(300, 384, 60, 16)],
+        checkpoints: [Offset(100, 400)],
+        goalX: 1400,
+      );
+      final w = World(level);
+      w.update(2.5, Input()..right = true);
+      expect(w.deaths, 1);
+      expect(w.deathKind, DeathKind.burn);
+    });
+
+    test(
+      'darya mein gire to doob jata hai, aur doobta hua neeche jata hai',
+      () {
+        final w = World(river())..pos = const Offset(645, 300);
+        w.update(0.6, Input());
+        expect(w.state, PlayerState.dead);
+        expect(w.deathKind, DeathKind.drown);
+        final y = w.pos.dy;
+        w.update(0.5, Input());
+        expect(w.pos.dy, greaterThan(y)); // aahista neeche
+      },
+    );
+
+    test('neza peeche se lage to aagay ki taraf girta hai', () {
+      const level = Level(
+        solids: [Rect.fromLTWH(-500, 400, 2000, 200)],
+        spikes: [],
+        saws: [],
+        checkpoints: [Offset(500, 400)],
+        goalX: 1400,
+      );
+      final w = World(level)..update(0.05, Input());
+      w.spears.add(Spear(480, 380, 300, 0));
+      w.update(0.1, Input());
+      expect(w.deathKind, DeathKind.spear);
+      expect(w.fallDir, 1);
+    });
+
+    test('har chapter bina masle ke chalta hai (10 second daud)', () {
+      for (final c in chapters) {
+        final w = World(c.level!());
+        final run = Input()..right = true;
+        for (var i = 0; i < 200; i++) {
+          run.jump = i % 15 == 0;
+          w.update(0.05, run);
+        }
+        expect(w.time, greaterThan(9.9), reason: c.title);
+      }
+    });
+
+    test('chapter naam English mein', () {
+      expect(chapters.map((c) => c.title), [
+        'The Hunt',
+        'Ashes',
+        'The River',
+        'The Storm',
+        'The Cliffs',
+        'Homecoming',
+      ]);
     });
   });
 }

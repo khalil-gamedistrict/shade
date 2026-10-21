@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import 'figures.dart';
 import 'grass.dart';
+import 'props.dart';
 import 'jungle.dart';
 import 'weather.dart';
 import 'world.dart';
@@ -56,9 +57,25 @@ class WorldPainter extends CustomPainter {
     canvas.save();
     canvas.translate(-camX, 0);
     jungle.drawWorldBack(canvas, world, camX, viewW, t, scale);
+    final level = world.level;
+    for (var i = 0; i < level.huts.length; i++) {
+      final x = level.huts[i];
+      if (x < camX - 150 || x > camX + viewW + 150) continue;
+      drawHut(canvas, x, _groundAt(x), t, world.windAt(x), i);
+    }
+    final waterY = level.waterY;
+    if (waterY != null) {
+      for (final (l, r) in _gaps(camX - 20, camX + viewW + 20)) {
+        drawWater(canvas, l, r, waterY, t);
+      }
+    }
     final grass = Path();
     for (final s in world.level.solids) {
       if (s.right < camX - 40 || s.left > camX + viewW + 40) continue;
+      if (s.height < 10) {
+        drawBridge(canvas, s, t, world.windAt(s.center.dx)); // rassi ka pul
+        continue;
+      }
       canvas.drawRect(s, _black);
       Grass.addTo(
         grass,
@@ -79,8 +96,14 @@ class WorldPainter extends CustomPainter {
       _saw(canvas, saw);
     }
     for (final m in world.level.movers) {
-      _mover(canvas, m.rectAt(t));
+      m.log ? drawLog(canvas, m.rectAt(t)) : _mover(canvas, m.rectAt(t));
     }
+    for (final f in level.fires) {
+      if (f.right < camX - 80 || f.left > camX + viewW + 80) continue;
+      drawFire(canvas, f, t);
+    }
+    final wife = level.wifeX;
+    if (wife != null) drawWifePit(canvas, wife, _groundAt(wife), t);
     for (final trap in world.level.traps) {
       _trap(canvas, trap);
     }
@@ -116,6 +139,36 @@ class WorldPainter extends CustomPainter {
     _fogAndVignette(canvas, size);
   }
 
+  double _groundAt(double x) {
+    var best = 400.0;
+    var found = false;
+    for (final s in world.level.solids) {
+      if (x >= s.left && x <= s.right && (!found || s.top < best)) {
+        best = s.top;
+        found = true;
+      }
+    }
+    return best;
+  }
+
+  /// [from]..[to] mein jahan zameen nahi (darya ka paani wahan dikhta hai)
+  List<(double, double)> _gaps(double from, double to) {
+    final spans = [
+      for (final s in world.level.solids)
+        if (s.height >= 10) (s.left, s.right),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
+    final out = <(double, double)>[];
+    var cursor = from;
+    for (final (l, r) in spans) {
+      if (r <= cursor) continue;
+      if (l > cursor) out.add((cursor, min(l, to)));
+      cursor = max(cursor, r);
+      if (cursor >= to) break;
+    }
+    if (cursor < to) out.add((cursor, to));
+    return out;
+  }
+
   void _sky(Canvas canvas, Size size) {
     final r = weather.rain;
     final top = Color.lerp(
@@ -138,6 +191,21 @@ class WorldPainter extends CustomPainter {
           colors: [top, bottom],
         ).createShader(rect),
     );
+    if (world.level.mood == Mood.fire) {
+      final flicker = 0.85 + 0.15 * sin(world.time * 9) * sin(world.time * 5.3);
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.white.withValues(alpha: 0.3 * flicker),
+              Colors.black.withValues(alpha: 0.35),
+            ],
+          ).createShader(rect),
+      );
+    }
     // Bijli: aasmaan chamak uthta hai, darakht aur bhi kaale dikhte hain
     if (weather.flash > 0) {
       canvas.drawRect(

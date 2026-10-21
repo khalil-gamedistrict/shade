@@ -528,6 +528,7 @@ class World {
     }
     _updateRocks(dt);
     _updateChase(dt);
+    _updateSpears(dt);
     final solids = solidsNow();
 
     vx = (input.right ? speed : 0) - (input.left ? speed : 0);
@@ -731,6 +732,10 @@ class World {
       );
       events.add(GameEvent.spearThrow);
     }
+  }
+
+  /// Hawa mein neze: kaman mein girte, zameen ya deewar mein gar jaate
+  void _updateSpears(double dt) {
     for (final sp in spears) {
       sp.age += dt;
       if (sp.stuck) continue;

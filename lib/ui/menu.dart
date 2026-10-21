@@ -301,3 +301,45 @@ class ComingSoon extends StatelessWidget {
     );
   }
 }
+
+/// Kahani ka ikhtitaam — aakhri chapter ke baad
+class EndingCard extends StatelessWidget {
+  final VoidCallback onDone;
+  const EndingCard({super.key, required this.onDone});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _Advance(
+        onAdvance: onDone,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'He made it home.',
+                style: TextStyle(
+                  fontSize: 26,
+                  letterSpacing: 4,
+                  color: _white,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              SizedBox(height: 18),
+              Text(
+                'THE END',
+                style: TextStyle(fontSize: 13, letterSpacing: 8, color: _dim),
+              ),
+              SizedBox(height: 36),
+              Text(
+                'Tap — menu',
+                style: TextStyle(fontSize: 12, letterSpacing: 2, color: _dim),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -34,7 +34,7 @@ class ShadeApp extends StatelessWidget {
   }
 }
 
-enum _Phase { title, card, play, soon }
+enum _Phase { title, card, play, soon, ending }
 
 /// Game ka safar: title → chapter ka naam → khelna → agla chapter (ya "jald aa raha hai")
 class ShadeHome extends StatefulWidget {
@@ -75,7 +75,7 @@ class _ShadeHomeState extends State<ShadeHome> {
     if (i + 1 < chapters.length) {
       _open(chapters[i + 1]);
     } else {
-      setState(() => phase = _Phase.title);
+      setState(() => phase = _Phase.ending); // kahani khatam
     }
   }
 
@@ -107,6 +107,10 @@ class _ShadeHomeState extends State<ShadeHome> {
           key: ValueKey('soon${chapter.number}'),
           chapter: chapter,
           onBack: _toTitle,
+        ),
+        _Phase.ending => EndingCard(
+          key: const ValueKey('ending'),
+          onDone: _toTitle,
         ),
       },
     );

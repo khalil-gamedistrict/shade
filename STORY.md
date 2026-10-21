@@ -21,14 +21,20 @@ Kahani bina alfaaz ke dikhayi jaati hai (Limbo ki tarah): silhouettes, awaazein,
 
 ## Chapters
 
-| # | Naam | Kahani | Gameplay | Haalat |
-|---|---|---|---|---|
-| 1 | Shikaar | Shikaar se ghar wapsi, door gaon se dhuaan | Aasaan jumps, pehli rukawatein | ✅ Bana |
-| 2 | Aag | Gaon jal raha hai; biwi ko gaddhay mein chhupana | Jalte jhonpre, girte shehteer | ⏳ |
-| 3 | Zanjeer | Qaid; rassiyon mein bandhe qaidiyon ki qataar | Dheemi chaal, jump nahi, waqt dekh kar chhupna | ⏳ |
-| 4 | Toofan | Bijli, afra-tafri, farar | Tez hawa, moosla dhaar baarish, hilte platform | ✅ Bana |
-| 5 | Peechha | Shikaari aur kutte peeche | Ruk nahi sakte, jaal | ⏳ |
-| 6 | Wapsi | Baarish se gaddha bhar raha hai | Barhta paani, aakhri scene | ⏳ |
+| # | Naam | Kahani | Gameplay / nayi cheez |
+|---|---|---|---|
+| 1 | The Hunt | Jungle mein shikaar — achanak khud shikaar ban jata hai | Aasaan jumps, pehli rukawatein, peechha shuru |
+| 2 | Ashes | Jalta hua gaon | Aag ke sholay, girte jalte shehteer, jalti jhonpriyan, dhuaan |
+| 3 | The River | Darya paar karna | Pattharon pe kood, tairte lakkar, paani mein gire to doob gaye |
+| 4 | The Storm | Toofan | Tez hawa, moosla dhaar baarish, bijli, hilte platform |
+| 5 | The Cliffs | Oonchi chattanen | Rassi ka pul, gehri khaiyan, saamne se tez hawa |
+| 6 | Homecoming | Ghar — gaddhay mein chhupi biwi tak | Bhari baarish, aakhir mein biwi; jeet pe "The End" |
+
+Sab chapter bane hue hain. Har chapter mein shikaari peeche hain.
+
+## Maut
+Gayab nahi hota: jhatka → girna (jis taraf se waar hua) → zameen pe tarapna → saakit.
+Gaddhay mein girne pe haath paon chalaata neeche jata hai, paani mein aahista doobta hai.
 
 ## Rukawatein kahani mein
 

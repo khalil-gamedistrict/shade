@@ -466,7 +466,10 @@ class Jungle {
     // Zameen pe fern, jhaariyan, bare patte — spikes ke paas nahi (taake khatra saaf dikhe)
     final pres = _res(scale, 1);
     for (final s in level.solids) {
-      if (s.right < camX - 80 || s.left > camX + viewW + 80 || s.width < 60) {
+      if (s.right < camX - 80 ||
+          s.left > camX + viewW + 80 ||
+          s.width < 60 ||
+          s.height < 10) {
         continue;
       }
       const cell = 26.0;
@@ -478,7 +481,10 @@ class Jungle {
         if (_hash(i, 41) > 0.8) continue;
         final x = i * cell + _hash(i, 42) * cell;
         if (x < s.left + 15 || x > s.right - 15) continue;
-        if (level.spikes.any((k) => x > k.left - 50 && x < k.right + 50)) {
+        if ([
+          ...level.spikes,
+          ...level.fires,
+        ].any((k) => x > k.left - 50 && x < k.right + 50)) {
           continue;
         }
         final type = _Plant.values[(_hash(i, 43) * 3).floor()];
