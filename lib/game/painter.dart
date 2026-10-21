@@ -6,120 +6,15 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'grass.dart';
-import 'trees.dart';
+import 'jungle.dart';
 import 'weather.dart';
 import 'world.dart';
 
-/// Jungle ki saari darakht layers
-class Scenery {
-  final far = TreeLayer(
-    parallax: 0.2,
-    spacing: 55,
-    seed: 11,
-    color: const Color(0x2E000000),
-    minHeight: 520,
-    maxHeight: 700,
-    thickness: 0.45,
-    maxDepth: 6,
-    leafiness: 0.3,
-    variants: 8,
-  );
-  final mid = TreeLayer(
-    parallax: 0.5,
-    spacing: 175,
-    seed: 22,
-    color: const Color(0x66000000),
-    minHeight: 480,
-    maxHeight: 650,
-    thickness: 0.65,
-    leafiness: 0.5,
-    variants: 8,
-  );
-  final near = TreeLayer(
-    parallax: 1,
-    spacing: 340,
-    seed: 33,
-    color: const Color(0xE0101010),
-    minHeight: 430,
-    maxHeight: 560,
-    thickness: 0.85,
-    maxDepth: 6,
-    leafiness: 0.7,
-  );
-  final front = TreeLayer(
-    parallax: 1.4,
-    spacing: 1300,
-    seed: 44,
-    color: const Color(0xFF030303),
-    minHeight: 750,
-    maxHeight: 900,
-    thickness: 1.1,
-    maxDepth: 6,
-    leafiness: 0.5,
-  );
-
-  // Door aur beech ke darakht: har ek ki ek dafa tasveer (image) bana lo, phir har frame
-  // sirf woh tasveer hawa ke hisaab se jhuka kar dikhao. Hazaron shakalein dobara banane se bachte hain.
-  final _images = <TreeLayer, Map<int, (ui.Image, Rect)>>{};
-  double _res = 0;
-
-  void drawCached(
-    Canvas canvas,
-    TreeLayer layer,
-    int i,
-    Offset root,
-    double sway,
-    double res,
-  ) {
-    if ((res - _res).abs() > 0.05) {
-      // Screen ka size badla — tasveerein naye size pe dobara banengi
-      for (final m in _images.values) {
-        for (final (img, _) in m.values) {
-          img.dispose();
-        }
-      }
-      _images.clear();
-      _res = res;
-    }
-    final key = layer.variantOf(i);
-    final (image, bounds) = _images
-        .putIfAbsent(layer, () => {})
-        .putIfAbsent(key, () => _render(layer, key, res));
-    canvas.save();
-    canvas.translate(root.dx, root.dy);
-    canvas.skew(-sway, 0); // oopar ka hissa zyada jhukta hai, jar apni jagah
-    if (layer.mirrored(i)) canvas.scale(-1, 1);
-    canvas.drawImageRect(
-      image,
-      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-      bounds,
-      Paint()..filterQuality = FilterQuality.medium,
-    );
-    canvas.restore();
-  }
-
-  (ui.Image, Rect) _render(TreeLayer layer, int key, double res) {
-    final path = Path();
-    layer.tree(key).addTo(path, Offset.zero, 0, 0);
-    final bounds = path.getBounds().inflate(2);
-    final rec = ui.PictureRecorder();
-    Canvas(rec)
-      ..scale(res)
-      ..translate(-bounds.left, -bounds.top)
-      ..drawPath(path, Paint()..color = layer.color);
-    final image = rec.endRecording().toImageSync(
-      (bounds.width * res).ceil(),
-      (bounds.height * res).ceil(),
-    );
-    return (image, bounds);
-  }
-}
-
 class WorldPainter extends CustomPainter {
   final World world;
-  final Scenery scenery;
+  final Jungle jungle;
   final Weather weather;
-  WorldPainter(this.world, this.scenery, this.weather, {super.repaint});
+  WorldPainter(this.world, this.jungle, this.weather, {super.repaint});
 
   static const viewHeight = 500.0; // itni world height screen pe fit hogi
   static final _black = Paint()..color = const Color(0xFF070707);
@@ -141,22 +36,25 @@ class WorldPainter extends CustomPainter {
     canvas.save();
     canvas.scale(scale);
 
-    // Door ke darakht + door ki baarish
-    final res =
-        scale * 1.25; // tasveer ki resolution (pixels har view unit mein)
-    _cachedLayer(canvas, scenery.far, camX, viewW, 470, wind * 0.4, t, res);
+    jungle.prepare(
+      scale,
+    ); // pehli dafa saari tasveerein ek saath (baad mein kabhi nahi atke)
+
+    // Door ka jungle + door ki baarish, phir dhund
+    jungle.drawFar(canvas, camX, viewW, wind, t, scale);
     _rain(canvas, 0);
     _haze(canvas, viewW, 0.18);
 
-    // Beech ke darakht — hawa mein hilte hue
-    _cachedLayer(canvas, scenery.mid, camX, viewW, 450, wind * 0.8, t, res);
+    // Beech ka jungle, patton se chhanti roshni
+    jungle.drawMid(canvas, camX, viewW, wind, t, scale);
+    jungle.drawLightRays(canvas, camX, viewW, t, weather.rain);
     _rain(canvas, 1);
     _haze(canvas, viewW, 0.12);
 
     // --- Game ki duniya (camera ke saath)
     canvas.save();
     canvas.translate(-camX, 0);
-    _nearTrees(canvas, camX, viewW, wind, t);
+    jungle.drawWorldBack(canvas, world, camX, viewW, t, scale);
     final grass = Path();
     for (final s in world.level.solids) {
       if (s.right < camX - 40 || s.left > camX + viewW + 40) continue;
@@ -179,6 +77,20 @@ class WorldPainter extends CustomPainter {
     for (final saw in world.level.saws) {
       _saw(canvas, saw);
     }
+    for (final m in world.level.movers) {
+      _mover(canvas, m.rectAt(t));
+    }
+    for (final trap in world.level.traps) {
+      _trap(canvas, trap);
+    }
+    for (final p in world.level.pendulums) {
+      _pendulum(canvas, p);
+    }
+    for (var i = 0; i < world.level.rocks.length; i++) {
+      if (world.rockState[i] == 0) continue; // abhi oopar chhupa hai
+      final rock = world.level.rocks[i];
+      _rock(canvas, Offset(rock.x, world.rockY[i]), rock.radius, i);
+    }
     for (final c in world.level.checkpoints.skip(1)) {
       _lamp(
         canvas,
@@ -193,7 +105,7 @@ class WorldPainter extends CustomPainter {
 
     // Saamne wali baarish, saamne ke darakht aur urte patte
     _rain(canvas, 2);
-    _frontTrees(canvas, camX, viewW, wind * 0.5, t);
+    jungle.drawFront(canvas, world, camX, viewW, wind * 0.5, t, scale);
     _flyingLeaves(canvas);
 
     canvas.restore();
@@ -246,75 +158,6 @@ class WorldPainter extends CustomPainter {
           ],
         ).createShader(rect),
     );
-  }
-
-  void _cachedLayer(
-    Canvas canvas,
-    TreeLayer layer,
-    double camX,
-    double viewW,
-    double rootY,
-    double wind,
-    double t,
-    double res,
-  ) {
-    final shift = camX * layer.parallax;
-    for (final (i, x) in layer.visible(shift - 250, shift + viewW + 250)) {
-      // Hawa ka jhukaav + har darakht ka apna aahista jhoolna
-      final sway =
-          wind * 0.035 + sin(t * 1.1 + i * 1.7) * 0.008 * (0.4 + wind.abs());
-      scenery.drawCached(canvas, layer, i, Offset(x - shift, rootY), sway, res);
-    }
-  }
-
-  /// Saamne ke darakht: player inke peeche aaye to yeh halke ho jaate hain, taake woh chhup na jaye
-  void _frontTrees(
-    Canvas canvas,
-    double camX,
-    double viewW,
-    double wind,
-    double t,
-  ) {
-    final layer = scenery.front;
-    final shift = camX * layer.parallax;
-    final playerX = world.pos.dx - camX;
-    for (final (i, x) in layer.visible(shift - 300, shift + viewW + 300)) {
-      final sx = x - shift;
-      final path = Path();
-      layer.tree(i).addTo(path, Offset(sx, 560), wind, t);
-      final near = (1 - ((sx - playerX).abs() - 40) / 160).clamp(0.0, 1.0);
-      canvas.drawPath(
-        path,
-        Paint()..color = layer.color.withValues(alpha: 1 - near * 0.7),
-      );
-    }
-  }
-
-  void _nearTrees(
-    Canvas canvas,
-    double camX,
-    double viewW,
-    double wind,
-    double t,
-  ) {
-    final layer = scenery.near;
-    final path = Path();
-    for (final (i, x) in layer.visible(camX - 250, camX + viewW + 250)) {
-      // Sirf zameen pe ugte hain, gaddhay mein nahi
-      final ground = world.level.solids.where(
-        (s) => x > s.left + 10 && x < s.right - 10 && s.top >= 340,
-      );
-      if (ground.isEmpty) continue;
-      layer
-          .tree(i)
-          .addTo(
-            path,
-            Offset(x, ground.first.top + 2),
-            world.windAt(x) * 0.9,
-            t,
-          );
-    }
-    canvas.drawPath(path, Paint()..color = layer.color);
   }
 
   void _rain(Canvas canvas, int layer) {
@@ -376,6 +219,108 @@ class WorldPainter extends CustomPainter {
       ], true);
     }
     canvas.drawPath(path, Paint()..color = const Color(0xDD080808));
+  }
+
+  /// Hilta platform: lakri ka takhta, oopar se do rassiyon pe latka hua
+  void _mover(Canvas canvas, Rect r) {
+    final rope = Paint()
+      ..color = const Color(0xFF070707)
+      ..strokeWidth = 1.5;
+    canvas.drawLine(Offset(r.left + 8, 0), Offset(r.left + 8, r.top), rope);
+    canvas.drawLine(Offset(r.right - 8, 0), Offset(r.right - 8, r.top), rope);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(r, const Radius.circular(3)),
+      _black,
+    );
+  }
+
+  /// Shikanja: zameen pe khula jabra, nukeele daant
+  void _trap(Canvas canvas, Rect r) {
+    final path = Path()
+      ..moveTo(r.left - 4, r.bottom)
+      ..lineTo(r.right + 4, r.bottom)
+      ..lineTo(r.right + 4, r.bottom - 3)
+      ..lineTo(r.left - 4, r.bottom - 3)
+      ..close();
+    // Do jabre, khule hue — har ek pe daant
+    for (final side in [-1.0, 1.0]) {
+      final hinge = Offset(r.center.dx, r.bottom - 2);
+      for (var k = 0; k < 5; k++) {
+        final t = k / 4;
+        final a = side * (0.25 + t * 1.1);
+        final base =
+            hinge + Offset(sin(a) * r.width * 0.55, -cos(a) * r.width * 0.2);
+        final tip = base + Offset(sin(a) * 2, -9 - (k.isEven ? 2 : 0));
+        path
+          ..moveTo(base.dx - 2, base.dy)
+          ..lineTo(tip.dx, tip.dy)
+          ..lineTo(base.dx + 2, base.dy)
+          ..close();
+      }
+    }
+    canvas.drawPath(path, _black);
+    canvas.drawCircle(Offset(r.center.dx, r.bottom - 2), 3, _black);
+  }
+
+  /// Rassi pe jhoolta bhari lakkar
+  void _pendulum(Canvas canvas, Pendulum p) {
+    final bob = p.bobAt(world.time);
+    canvas.drawLine(
+      Offset(p.pivot.dx, 0),
+      p.pivot,
+      Paint()
+        ..color = const Color(0xFF070707)
+        ..strokeWidth = 2,
+    );
+    canvas.drawLine(
+      p.pivot,
+      bob,
+      Paint()
+        ..color = const Color(0xFF070707)
+        ..strokeWidth = 2.5,
+    );
+    // Lakkar: rassi ke seedh mein mota gol tukra, kuch ubhri ganthein
+    final a = p.angleAt(world.time);
+    canvas.save();
+    canvas.translate(bob.dx, bob.dy);
+    canvas.rotate(-a);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: p.radius * 2.6,
+          height: p.radius * 1.6,
+        ),
+        Radius.circular(p.radius * 0.7),
+      ),
+      _black,
+    );
+    for (final k in [-1.0, 1.0]) {
+      canvas.drawCircle(Offset(k * p.radius * 1.2, 0), p.radius * 0.5, _black);
+    }
+    canvas.restore();
+  }
+
+  /// Ubar-khaabar patthar
+  void _rock(Canvas canvas, Offset c, double r, int seed) {
+    final rnd = Random(seed * 7 + 3);
+    final path = Path();
+    for (var k = 0; k < 9; k++) {
+      final a = k / 9 * 2 * pi;
+      final rr = r * (0.8 + rnd.nextDouble() * 0.3);
+      final p = c + Offset(cos(a) * rr * 1.1, sin(a) * rr * 0.85);
+      k == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    path.close();
+    canvas.drawPath(path, _black);
+    // Halki roshni ki lakeer — taake girta patthar kaale patton ke saamne bhi dikhe
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = const Color(0x66E0E0E0),
+    );
   }
 
   void _spikes(Canvas canvas, Rect s) {

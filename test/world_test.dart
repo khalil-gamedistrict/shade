@@ -30,7 +30,7 @@ void main() {
   test('right dabane se aagay chalta hai', () {
     final w = World(testLevel());
     w.update(0.5, Input()..right = true);
-    expect(w.pos.dx, greaterThan(140));
+    expect(w.pos.dx, greaterThan(110));
   });
 
   test('jump sirf zameen se hota hai', () {
@@ -48,7 +48,7 @@ void main() {
   test('spike pe marta hai aur checkpoint pe wapas aata hai', () {
     final w = World(testLevel());
     final input = Input()..right = true;
-    w.update(1.5, input);
+    w.update(2.5, input);
     expect(w.state, PlayerState.dead);
     expect(w.deaths, 1);
 
@@ -70,15 +70,15 @@ void main() {
   });
 
   test('asal level mein pehla gaddha kood ke paar ho sakta hai', () {
-    final w = World()..pos = const Offset(580, 400);
+    final w = World()..pos = const Offset(505, 400);
     final input = Input()
       ..right = true
       ..jump = true;
     w.update(0.05, input);
     input.jump = false;
-    w.update(1, input);
+    w.update(1.2, input);
     expect(w.state, PlayerState.alive);
-    expect(w.pos.dx, greaterThan(700));
+    expect(w.pos.dx, greaterThan(640));
   });
 
   testWidgets('game screen khulti hai', (tester) async {
@@ -91,7 +91,7 @@ void main() {
     final w = World(testLevel());
     w.update(0.05, Input()..jump = true);
     expect(w.events, contains(GameEvent.jump));
-    w.update(1.5, Input()..right = true);
+    w.update(2.5, Input()..right = true);
     expect(
       w.events,
       containsAll([
@@ -153,5 +153,111 @@ void main() {
     expect(weather.layers.last.active, greaterThan(100));
     expect(weather.splashes, isNotEmpty);
     expect(thunders, greaterThan(0));
+  });
+
+  test('hilta platform pe khare player ko saath le jata hai', () {
+    const level = Level(
+      solids: [Rect.fromLTWH(0, 400, 100, 200)],
+      spikes: [],
+      saws: [],
+      movers: [Mover(Rect.fromLTWH(200, 300, 100, 18), dx: 80, speed: 1)],
+      checkpoints: [Offset(250, 300)],
+      goalX: 5000,
+    );
+    final w = World(level)..update(0.05, Input());
+    expect(w.grounded, isTrue);
+    final x0 = w.pos.dx;
+    w.update(1, Input());
+    // Platform sin(t) se chalta hai: 1 second mein ~67 units right
+    expect(w.pos.dx - x0, greaterThan(40));
+    expect(w.state, PlayerState.alive);
+  });
+
+  test('patthar paas jaane pe girta hai, neeche khare ko maarta hai, phir rasta rokta hai', () {
+    const level = Level(
+      solids: [Rect.fromLTWH(0, 400, 2000, 200)],
+      spikes: [],
+      saws: [],
+      rocks: [Rock(300, 250)],
+      checkpoints: [Offset(50, 400), Offset(200, 400)],
+      goalX: 1900,
+    );
+    // Neeche khara rahe to marega
+    final under = World(level)..pos = const Offset(300, 400);
+    under.update(2, Input());
+    expect(under.state, PlayerState.dead);
+
+    // Paas aa kar ruk jaye to patthar aagay gir kar rukawat ban jata hai
+    final w = World(level)..pos = const Offset(260, 400);
+    w.update(2, Input());
+    expect(w.rockState[0], 2);
+    expect(w.events, contains(GameEvent.rock));
+    w.update(1, Input()..right = true);
+    expect(w.pos.dx, lessThan(300 - 16)); // patthar ke paar nahi gaya
+    expect(w.state, PlayerState.alive);
+  });
+
+  test('jhoolta lakkar aur shikanja maarte hain', () {
+    const level = Level(
+      solids: [Rect.fromLTWH(0, 400, 2000, 200)],
+      spikes: [],
+      saws: [],
+      traps: [Rect.fromLTWH(600, 390, 34, 10)],
+      pendulums: [Pendulum(Offset(300, 200), 175, amplitude: 0.0001)],
+      checkpoints: [Offset(50, 400)],
+      goalX: 1900,
+    );
+    expect(
+      (World(level)
+            ..pos = const Offset(300, 400)
+            ..update(0.1, Input()))
+          .state,
+      PlayerState.dead,
+    );
+    expect(
+      (World(level)
+            ..pos = const Offset(615, 400)
+            ..update(0.1, Input()))
+          .state,
+      PlayerState.dead,
+    );
+  });
+
+  test('asal level ka har khaali gaddha nayi jump se paar ho sakta hai', () {
+    final level = Level.first();
+    final jumpTime = 2 * World.jumpVelocity / World.gravity;
+    final jumpHeight =
+        World.jumpVelocity * World.jumpVelocity / (2 * World.gravity);
+    // Zameen ke hisse jahan khara ho sakte hain (deewarein bhi)
+    final surfaces = [...level.solids]
+      ..sort((a, b) => a.left.compareTo(b.left));
+    var reach = surfaces.first;
+    for (final next in surfaces.skip(1)) {
+      if (next.left <= reach.right) {
+        if (next.right > reach.right) reach = next;
+        continue;
+      }
+      final gap = next.left - reach.right;
+      final hasMover = level.movers.any(
+        (m) => m.base.right > reach.right && m.base.left < next.left,
+      );
+      if (!hasMover) {
+        // Sab se buri hawa: saamne ki hawa poori, peeche ki hawa sirf 40%
+        final w = level.wind.at((reach.right + next.left) / 2);
+        final push = (w < 0 ? w : w * 0.4) * World.windPush;
+        final distance = jumpTime * (World.speed + push);
+        expect(
+          gap - World.playerW,
+          lessThan(distance * 0.85),
+          reason: 'gaddha ${reach.right}–${next.left}',
+        );
+        expect(
+          reach.top - next.top,
+          lessThan(jumpHeight * 0.85),
+          reason: 'oonchai ${next.left}',
+        );
+      }
+      reach = next;
+    }
   });
 }

@@ -27,13 +27,16 @@ class Sound {
     GameEvent.death: 0.9,
     GameEvent.checkpoint: 0.45,
     GameEvent.win: 0.7,
+    GameEvent.rock: 1.0,
   };
 
   Future<void> load() async {
     for (final e in _volumes.keys) {
       final p = AudioPlayer();
       await p.setReleaseMode(ReleaseMode.stop);
-      await p.setSource(AssetSource('sounds/${e.name}.ogg'));
+      // Patthar girne pe zameen pe girne wali awaaz hi, zor se
+      final file = e == GameEvent.rock ? 'land' : e.name;
+      await p.setSource(AssetSource('sounds/$file.ogg'));
       _effects[e] = p;
     }
     for (var i = 1; i <= 6; i++) {

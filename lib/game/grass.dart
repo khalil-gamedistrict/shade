@@ -34,10 +34,10 @@ class Grass {
       if (x < left + 2 || x > right - 2) continue;
       final wind = windAt(x);
       // Guccha: kuch pattiyan ek jagah se phaili hui
-      final blades = 4 + (_rand(i, 3) * 7).floor();
+      final blades = 3 + (_rand(i, 3) * 4).floor();
       // Lambai dheere dheere badalti hai — kahin ghaas oonchi, kahin chhoti
       final patch = 0.6 + 0.4 * sin(x * 0.013) * sin(x * 0.0071 + 2);
-      final clumpH = (9 + _rand(i, 4) * 14) * patch;
+      final clumpH = (5 + _rand(i, 4) * 7) * patch;
       for (var k = 0; k < blades; k++) {
         final r1 = _rand(i * 13 + k, 5), r2 = _rand(i * 13 + k, 6);
         final spread = (k / max(1, blades - 1) - 0.5) * 1.1 + (r1 - 0.5) * 0.4;
@@ -55,8 +55,8 @@ class Grass {
         );
       }
       // Kabhi kabhi ek lambi dandi beej ki baali ke saath
-      if (_rand(i, 7) < 0.12) {
-        final h = 28 + _rand(i, 8) * 18;
+      if (_rand(i, 7) < 0.07) {
+        final h = 16 + _rand(i, 8) * 10;
         final tip = _blade(
           path,
           x,

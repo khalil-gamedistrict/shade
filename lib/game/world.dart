@@ -22,6 +22,50 @@ class Saw {
   Offset centerAt(double t) => Offset(x, baseY + sin(t * speed) * range);
 }
 
+/// Hilta platform: [base] jagah se sin lehar mein [dx] (idhar udhar) aur [dy] (oopar neeche) chalta hai
+class Mover {
+  final Rect base;
+  final double dx, dy, speed, phase;
+  const Mover(
+    this.base, {
+    this.dx = 0,
+    this.dy = 0,
+    this.speed = 1,
+    this.phase = 0,
+  });
+
+  Rect rectAt(double t) {
+    final k = sin(t * speed + phase);
+    return base.shift(Offset(k * dx, k * dy));
+  }
+}
+
+/// Oopar se girta patthar: player [triggerX] paar kare to [x] pe girta hai, gir kar rasta rokta hai
+class Rock {
+  final double x, triggerX, radius;
+  const Rock(this.x, this.triggerX, {this.radius = 16});
+}
+
+/// Rassi pe jhoolta lakkar: [pivot] se [length] lamba, [amplitude] radian tak jhoolta hai
+class Pendulum {
+  final Offset pivot;
+  final double length, amplitude, speed, phase, radius;
+  const Pendulum(
+    this.pivot,
+    this.length, {
+    this.amplitude = 0.9,
+    this.speed = 1.6,
+    this.phase = 0,
+    this.radius = 20,
+  });
+
+  double angleAt(double t) => amplitude * sin(t * speed + phase);
+  Offset bobAt(double t) {
+    final a = angleAt(t);
+    return pivot + Offset(sin(a) * length, cos(a) * length);
+  }
+}
+
 /// Level ke saath badalti cheez (hawa, baarish): (x, value) points, beech mein smooth
 class Profile {
   final List<(double, double)> points;
@@ -50,6 +94,10 @@ class Level {
   final List<Offset> checkpoints;
   final double goalX;
   final double deathY;
+  final List<Rect> traps; // shikanje (bear traps)
+  final List<Mover> movers;
+  final List<Rock> rocks;
+  final List<Pendulum> pendulums;
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -64,65 +112,91 @@ class Level {
     required this.checkpoints,
     required this.goalX,
     this.deathY = 650,
+    this.traps = const [],
+    this.movers = const [],
+    this.rocks = const [],
+    this.pendulums = const [],
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });
 
   double get width => solids.fold(0.0, (m, s) => max(m, s.right));
 
+  // Jump: ~117 oonchi, ~136 lambi (bina hawa ke). Saamne ki hawa mein ~110, peeche ki aandhi mein ~165.
+  // Is liye gaddhay: aam ≤ 110, saamne ki hawa mein ≤ 85, seedhiyan ≤ 85 oonchi.
   static Level first() => const Level(
     solids: [
-      // --- Hissa 1: jungle ki shuruaat, halki hawa
-      Rect.fromLTWH(0, 400, 600, 200),
-      // gaddha 600–700
-      Rect.fromLTWH(700, 400, 500, 200),
-      Rect.fromLTWH(1200, 340, 300, 260), // seedhi upar
-      Rect.fromLTWH(1500, 400, 150, 200),
-      // gaddha 1650–1770
-      Rect.fromLTWH(1770, 400, 630, 200),
-      Rect.fromLTWH(2000, 320, 40, 80), // deewar, kood ke paar karo
-      // --- Hissa 2: baarish shuru, bara gaddha 2400–2900 beech mein platforms
-      Rect.fromLTWH(2490, 360, 100, 20),
-      Rect.fromLTWH(2690, 330, 100, 20),
-      Rect.fromLTWH(2900, 400, 800, 200),
-      // --- Hissa 3: saamne se tez hawa (aage barhna mushkil)
-      // gaddha 3700–3800
-      Rect.fromLTWH(3800, 400, 700, 200),
-      Rect.fromLTWH(4200, 320, 40, 80),
-      // gaddha 4500–4620
-      Rect.fromLTWH(4620, 400, 180, 200),
-      Rect.fromLTWH(4800, 340, 200, 260), // seedhiyan
-      Rect.fromLTWH(5000, 280, 150, 320),
-      Rect.fromLTWH(5150, 400, 150, 200),
-      // --- Hissa 4: toofan — moosla dhaar baarish, peeche se aandhi, gaddhay pe platforms
-      Rect.fromLTWH(5390, 370, 80, 20),
-      Rect.fromLTWH(5560, 350, 80, 20),
-      Rect.fromLTWH(5730, 370, 80, 20),
-      Rect.fromLTWH(5900, 400, 1300, 200),
+      // --- 1: jungle ki shuruaat
+      Rect.fromLTWH(0, 400, 520, 200),
+      // gaddha 520–610
+      Rect.fromLTWH(610, 400, 390, 200),
+      Rect.fromLTWH(1000, 345, 200, 255), // ooncha hissa, oopar jhoolta lakkar
+      Rect.fromLTWH(1200, 400, 100, 200),
+      // gaddha 1300–1395
+      // --- 2: baarish shuru, peeche se hawa
+      Rect.fromLTWH(1395, 400, 655, 200),
+      Rect.fromLTWH(1980, 320, 40, 80), // deewar
+      // gaddha 2050–2160
+      Rect.fromLTWH(2160, 400, 260, 200),
+      // --- 3: moosla dhaar baarish, bara gaddha 2420–2960 hilte platformon ke saath
+      Rect.fromLTWH(2640, 345, 80, 18),
+      Rect.fromLTWH(2960, 400, 520, 200),
+      // --- 4: saamne se tez hawa
+      // gaddha 3480–3560
+      Rect.fromLTWH(3560, 400, 690, 200),
+      Rect.fromLTWH(4120, 330, 40, 70), // deewar
+      // gaddha 4250–4330
+      Rect.fromLTWH(4330, 400, 390, 200),
+      Rect.fromLTWH(4720, 345, 160, 255), // seedhiyan
+      Rect.fromLTWH(4880, 290, 140, 310),
+      Rect.fromLTWH(5020, 400, 180, 200),
+      // --- 5: toofan — peeche se aandhi, bara gaddha 5200–5880
+      Rect.fromLTWH(5290, 370, 80, 18),
+      Rect.fromLTWH(5640, 365, 80, 18),
+      Rect.fromLTWH(5880, 400, 1420, 200),
     ],
     spikes: [
-      Rect.fromLTWH(900, 384, 48, 16),
-      Rect.fromLTWH(2200, 384, 64, 16),
-      Rect.fromLTWH(3350, 384, 48, 16),
-      Rect.fromLTWH(4000, 384, 48, 16),
-      Rect.fromLTWH(5220, 384, 48, 16),
-      Rect.fromLTWH(6500, 384, 64, 16),
+      Rect.fromLTWH(760, 384, 48, 16),
+      Rect.fromLTWH(1850, 384, 64, 16),
+      Rect.fromLTWH(3380, 384, 48, 16),
+      Rect.fromLTWH(4450, 384, 48, 16),
+      Rect.fromLTWH(5120, 384, 40, 16),
+      Rect.fromLTWH(6450, 384, 64, 16),
+    ],
+    traps: [
+      Rect.fromLTWH(300, 390, 34, 10),
+      Rect.fromLTWH(3120, 390, 34, 10),
+      Rect.fromLTWH(4600, 390, 34, 10),
+      Rect.fromLTWH(6850, 390, 34, 10),
     ],
     saws: [
-      Saw(3150, 320),
-      Saw(4380, 320),
-      Saw(6250, 320, speed: 2.4),
-      Saw(6750, 310, speed: 3, range: 80),
+      Saw(2330, 320, speed: 1.5),
+      Saw(3990, 320, speed: 1.5),
+      Saw(6300, 320, speed: 1.8),
+      Saw(6990, 310, speed: 2.2, range: 80),
+    ],
+    pendulums: [
+      Pendulum(Offset(1100, 150), 150, speed: 1.4),
+      Pendulum(Offset(3260, 170), 175, speed: 1.5, phase: 1),
+      Pendulum(Offset(6110, 160), 185, speed: 1.7, phase: 2),
+    ],
+    rocks: [Rock(1680, 1500), Rock(3830, 3680), Rock(6700, 6540)],
+    movers: [
+      Mover(Rect.fromLTWH(2505, 370, 90, 18), dx: 60, speed: 0.9),
+      Mover(Rect.fromLTWH(2790, 360, 80, 18), dy: 45, speed: 1.2),
+      Mover(Rect.fromLTWH(5450, 350, 90, 18), dx: 50, speed: 1.0, phase: 1),
+      Mover(Rect.fromLTWH(5770, 360, 70, 18), dy: 40, speed: 1.3, phase: 2),
     ],
     checkpoints: [
       Offset(60, 400),
-      Offset(1820, 400),
-      Offset(2960, 400),
-      Offset(3850, 400),
-      Offset(5060, 280),
-      Offset(5960, 400),
+      Offset(1440, 400),
+      Offset(2200, 400),
+      Offset(3000, 400),
+      Offset(3600, 400),
+      Offset(4950, 290),
+      Offset(5930, 400),
     ],
-    goalX: 7050,
+    goalX: 7150,
     wind: Profile([
       (0, 0.2),
       (1400, 0.45),
@@ -145,7 +219,7 @@ class Level {
       (4800, 0.35),
       (5400, 1.0),
       (6600, 0.9),
-      (7100, 0.5),
+      (7300, 0.5),
     ]),
   );
 }
@@ -153,14 +227,16 @@ class Level {
 enum PlayerState { alive, dead, won }
 
 /// Game mein jo kuch hua — UI inhein sun kar sound bajata hai
-enum GameEvent { step, jump, land, death, checkpoint, win }
+enum GameEvent { step, jump, land, death, checkpoint, win, rock }
 
 class World {
   static const double playerW = 22, playerH = 44;
-  static const double speed = 220, gravity = 1800, jumpVelocity = 650;
+  // Dheemi, sochi samjhi chaal (Limbo jaisi) aur hawa mein zara der tairti jump
+  static const double speed = 150, gravity = 1150, jumpVelocity = 520;
   static const double respawnDelay = 1.2;
   static const double windPush =
-      55; // poori aandhi player ko itna px/s dhakelti hai
+      38; // poori aandhi player ko itna px/s dhakelti hai
+  static const double rockGravity = 1100;
 
   final Level level;
   late Offset pos; // player ka bottom-center
@@ -175,9 +251,44 @@ class World {
   PlayerState state = PlayerState.alive;
   final List<GameEvent> events = [];
 
+  // Patthar: 0 = intezar, 1 = gir raha, 2 = zameen pe (rasta rokta hai)
+  late final List<int> rockState;
+  late final List<double> rockY, rockVy;
+  int? _standingOn; // kis hilte platform pe khara hai
+
   World([Level? level]) : level = level ?? Level.first() {
     pos = this.level.checkpoints.first;
+    rockState = List.filled(this.level.rocks.length, 0);
+    rockY = List.filled(this.level.rocks.length, -40);
+    rockVy = List.filled(this.level.rocks.length, 0);
   }
+
+  double _groundBelow(double x) {
+    var best = level.deathY;
+    for (final s in level.solids) {
+      if (x >= s.left && x <= s.right && s.top < best) best = s.top;
+    }
+    return best;
+  }
+
+  /// Zameen pe gira patthar — thos rukawat
+  Rect rockRect(int i) {
+    final r = level.rocks[i];
+    return Rect.fromLTWH(
+      r.x - r.radius,
+      rockY[i] - r.radius * 0.6,
+      r.radius * 2,
+      r.radius * 1.6,
+    );
+  }
+
+  /// Is waqt ki saari thos cheezen: zameen, hilte platform, gire hue patthar
+  List<Rect> solidsNow() => [
+    ...level.solids,
+    for (final m in level.movers) m.rectAt(time),
+    for (var i = 0; i < level.rocks.length; i++)
+      if (rockState[i] == 2) rockRect(i),
+  ];
 
   /// Is jagah abhi hawa kitni hai — level ki hawa + jhonke (gusts) jo waqt ke saath aate jaate hain
   double windAt(double x) {
@@ -210,6 +321,15 @@ class World {
       return;
     }
 
+    // Hilte platform pe khare ho to woh saath le jata hai
+    if (_standingOn != null) {
+      final m = level.movers[_standingOn!];
+      final d = m.rectAt(time).topLeft - m.rectAt(time - dt).topLeft;
+      pos += d;
+    }
+    _updateRocks(dt);
+    final solids = solidsNow();
+
     vx = (input.right ? speed : 0) - (input.left ? speed : 0);
     if (vx != 0) facingRight = vx > 0;
     if (input.jump && grounded) {
@@ -224,7 +344,7 @@ class World {
     final pushed = !grounded || vx != 0;
     final moveX = vx + (pushed ? windAt(pos.dx) * windPush : 0);
     pos = Offset(pos.dx + moveX * dt, pos.dy);
-    for (final s in level.solids) {
+    for (final s in solids) {
       final r = playerRect;
       if (!r.overlaps(s)) continue;
       pos = Offset(
@@ -236,12 +356,16 @@ class World {
     final wasGrounded = grounded;
     final fallSpeed = vy;
     grounded = false;
+    _standingOn = null;
     pos = Offset(pos.dx, pos.dy + vy * dt);
-    for (final s in level.solids) {
+    for (var k = 0; k < solids.length; k++) {
+      final s = solids[k];
       if (!playerRect.overlaps(s)) continue;
       if (vy > 0) {
         pos = Offset(pos.dx, s.top);
         grounded = true;
+        final m = k - level.solids.length;
+        if (m >= 0 && m < level.movers.length) _standingOn = m;
       } else {
         pos = Offset(pos.dx, s.bottom + playerH);
       }
@@ -251,7 +375,7 @@ class World {
     if (grounded && !wasGrounded && fallSpeed > 300) events.add(GameEvent.land);
 
     final oldPhase = walkPhase;
-    walkPhase = grounded && vx != 0 ? walkPhase + dt * 12 : 0;
+    walkPhase = grounded && vx != 0 ? walkPhase + dt * 8.5 : 0;
     // Har aadhe chakkar pe ek qadam zameen pe parta hai
     if ((walkPhase / pi).floor() > (oldPhase / pi).floor()) {
       events.add(GameEvent.step);
@@ -276,6 +400,25 @@ class World {
     final r = playerRect.deflate(3); // thori riayat
     if (pos.dy > level.deathY) return true;
     if (level.spikes.any(r.overlaps)) return true;
+    if (level.traps.any(r.overlaps)) return true;
+    bool hitsCircle(Offset c, double radius) {
+      final nearest = Offset(
+        c.dx.clamp(r.left, r.right),
+        c.dy.clamp(r.top, r.bottom),
+      );
+      return (nearest - c).distance < radius;
+    }
+
+    for (final p in level.pendulums) {
+      if (hitsCircle(p.bobAt(time), p.radius)) return true;
+    }
+    for (var i = 0; i < level.rocks.length; i++) {
+      final rock = level.rocks[i];
+      if (rockState[i] == 1 &&
+          hitsCircle(Offset(rock.x, rockY[i]), rock.radius)) {
+        return true;
+      }
+    }
     for (final saw in level.saws) {
       final c = saw.centerAt(time);
       final nearest = Offset(
@@ -294,9 +437,34 @@ class World {
     events.add(GameEvent.death);
   }
 
+  void _updateRocks(double dt) {
+    for (var i = 0; i < level.rocks.length; i++) {
+      final rock = level.rocks[i];
+      if (rockState[i] == 0 && pos.dx >= rock.triggerX) rockState[i] = 1;
+      if (rockState[i] != 1) continue;
+      rockVy[i] += rockGravity * dt;
+      rockY[i] += rockVy[i] * dt;
+      final floor = _groundBelow(rock.x) - rock.radius;
+      if (rockY[i] >= floor) {
+        rockY[i] = floor;
+        rockState[i] = 2;
+        events.add(GameEvent.rock);
+      }
+    }
+  }
+
   void _respawn() {
     pos = level.checkpoints[checkpoint];
     vx = vy = 0;
+    _standingOn = null;
+    // Checkpoint ke aage wale patthar dobara oopar — phir se girenge
+    for (var i = 0; i < level.rocks.length; i++) {
+      if (level.rocks[i].triggerX > pos.dx) {
+        rockState[i] = 0;
+        rockY[i] = -40;
+        rockVy[i] = 0;
+      }
+    }
     state = PlayerState.alive;
   }
 }

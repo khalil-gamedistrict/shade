@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import 'game/jungle.dart';
 import 'game/painter.dart';
 import 'game/sound.dart';
 import 'game/weather.dart';
@@ -10,6 +11,9 @@ import 'game/world.dart';
 // CI build ke waqt --dart-define=BUILD_INFO=... se set hota hai
 const buildInfo = String.fromEnvironment('BUILD_INFO', defaultValue: 'local');
 
+// Testing ke liye sound band karna ho: --dart-define=SOUND=false
+const soundEnabled = bool.fromEnvironment('SOUND', defaultValue: true);
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -17,7 +21,7 @@ void main() {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  runApp(const ShadeApp());
+  runApp(const ShadeApp(sound: soundEnabled));
 }
 
 class ShadeApp extends StatelessWidget {
@@ -52,7 +56,7 @@ class _GameScreenState extends State<GameScreen>
   Duration last = Duration.zero;
   PlayerState shownState = PlayerState.alive;
   Sound? sound;
-  final scenery = Scenery();
+  final jungle = Jungle();
   final weather = Weather();
 
   @override
@@ -121,13 +125,14 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   Widget build(BuildContext context) {
+    jungle.dpr = MediaQuery.devicePixelRatioOf(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
           Positioned.fill(
             child: CustomPaint(
-              painter: WorldPainter(world, scenery, weather, repaint: frame),
+              painter: WorldPainter(world, jungle, weather, repaint: frame),
             ),
           ),
           Positioned(

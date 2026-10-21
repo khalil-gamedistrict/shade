@@ -1,5 +1,5 @@
 // Code se bane darakht: tana → shaakhen → bareek tehniyan → patte.
-// Har frame hawa ke hisaab se har hissa jhukta hai — oopar ki patli tehniyan zyada, tana kam.
+// Shaakhen ek dafa tasveer ban jaati hain (painter.dart), patte har frame hawa mein hilte hain.
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui';
@@ -26,6 +26,16 @@ class _Leaf {
   final int node;
   final double along, angle, size, phase;
   _Leaf(this.node, this.along, this.angle, this.size, this.phase);
+}
+
+/// Darakht ka ek tukra: tana (tier 0), bari shaakh (1) ya chhoti shaakh (2)
+class TreePiece {
+  final int parent; // -1 = tana
+  final int tier;
+  final Offset pivot; // jis jor pe yeh ghoomta hai
+  final double phase; // har shaakh apni taal pe jhoolti hai
+  final nodes = <int>[], leaves = <int>[], children = <int>[];
+  TreePiece(this.parent, this.tier, this.pivot, this.phase);
 }
 
 class Tree {
@@ -122,7 +132,7 @@ class Tree {
       _nodes.add(
         _Node(
           _nodes.length - 1,
-          (r.nextDouble() - 0.5) * 0.45,
+          (r.nextDouble() - 0.5) * 0.6,
           len * 0.5,
           wm,
           w1,
@@ -137,17 +147,33 @@ class Tree {
     }
     me = _nodes.length - 1;
 
+    if (depth >= maxDepth - 2 && depth < maxDepth && len >= 6) {
+      // Aakhri se pehle wali tehni pe bhi kuch patte
+      if (r.nextDouble() < leafiness * 0.85) {
+        for (var i = 0, n = 3 + r.nextInt(4); i < n; i++) {
+          _leaves.add(
+            _Leaf(
+              me,
+              0.3 + r.nextDouble() * 0.7,
+              (r.nextDouble() - 0.5) * 2.6,
+              5 + r.nextDouble() * 4,
+              r.nextDouble() * 6.28,
+            ),
+          );
+        }
+      }
+    }
     if (depth >= maxDepth || len < 6) {
-      // Aakhri bareek tehni: patte
+      // Aakhri bareek tehni: patton ka guccha
       if (r.nextDouble() < leafiness) {
-        final count = 2 + r.nextInt(4);
+        final count = 9 + r.nextInt(7);
         for (var i = 0; i < count; i++) {
           _leaves.add(
             _Leaf(
               me,
-              0.35 + r.nextDouble() * 0.65,
+              0.2 + r.nextDouble() * 0.85,
               (r.nextDouble() - 0.5) * 2.6,
-              3 + r.nextDouble() * 3.5,
+              6 + r.nextDouble() * 6,
               r.nextDouble() * 6.28,
             ),
           );
@@ -177,7 +203,7 @@ class Tree {
     }
   }
 
-  /// Darakht ko [root] se, [wind] (-1..1) aur [time] ke hisaab se [path] mein add karta hai.
+  /// Darakht ka poora shape (shaakhen + patte) [path] mein — hawa [wind] aur waqt [time] ke hisaab se
   void addTo(
     Path path,
     Offset root,
@@ -185,6 +211,21 @@ class Tree {
     double time, {
     double scale = 1,
   }) {
+    _pose(root, wind, time, scale);
+    addBranches(path, scale: scale);
+    addLeaves(path, wind, time, scale: scale);
+  }
+
+  /// Bina hawa ke shakal: (shaakhen, patte) — tasveer banane ke liye
+  (Path, Path) restShape() {
+    _pose(Offset.zero, 0, 0, 1);
+    final branches = Path(), leaves = Path();
+    addBranches(branches);
+    addLeaves(leaves, 0, 0);
+    return (branches, leaves);
+  }
+
+  void _pose(Offset root, double wind, double time, double scale) {
     final calm = 0.25 + wind.abs();
     for (var i = 0; i < _nodes.length; i++) {
       final n = _nodes[i];
@@ -210,40 +251,118 @@ class Tree {
       _ay[i] = sy;
       _bx[i] = sx + sin(a) * len;
       _by[i] = sy - cos(a) * len;
-
-      // Tapered tukra: neeche mota, oopar patla
-      final px = cos(a), py = sin(a);
-      final h0 = n.w0 * scale / 2, h1 = n.w1 * scale / 2;
-      _poly(path, [
-        Offset(sx - px * h0, sy - py * h0),
-        Offset(sx + px * h0, sy + py * h0),
-        Offset(_bx[i] + px * h1, _by[i] + py * h1),
-        Offset(_bx[i] - px * h1, _by[i] - py * h1),
-      ]);
-      // Moti shaakhon ke jor gol, taake tukre nazar na aayen
-      if (n.depth <= 2 && h0 > 1.2) {
-        path.addOval(Rect.fromCircle(center: Offset(sx, sy), radius: h0));
-      }
     }
+  }
 
-    // Patte: tehni pe lage, hawa mein tezi se phar-phar
-    final flap = 3.5 + wind.abs() * 7;
+  /// Sirf tana aur shaakhen (pehle _pose chalna chahiye)
+  void addBranches(Path path, {double scale = 1}) {
+    for (var i = 0; i < _nodes.length; i++) {
+      _addNode(path, i, scale);
+    }
+  }
+
+  void _addNode(Path path, int i, double scale) {
+    final n = _nodes[i];
+    final a = _abs[i];
+    final sx = _ax[i], sy = _ay[i];
+    // Tapered tukra: neeche mota, oopar patla
+    final px = cos(a), py = sin(a);
+    final h0 = n.w0 * scale / 2, h1 = n.w1 * scale / 2;
+    _poly(path, [
+      Offset(sx - px * h0, sy - py * h0),
+      Offset(sx + px * h0, sy + py * h0),
+      Offset(_bx[i] + px * h1, _by[i] + py * h1),
+      Offset(_bx[i] - px * h1, _by[i] - py * h1),
+    ]);
+    // Moti shaakhon ke jor gol, taake tukre nazar na aayen
+    if (n.depth <= 2 && h0 > 1.2) {
+      path.addOval(Rect.fromCircle(center: Offset(sx, sy), radius: h0));
+    }
+  }
+
+  /// Sirf patte (pehle _pose chalna chahiye)
+  void addLeaves(Path path, double wind, double time, {double scale = 1}) {
     for (final l in _leaves) {
-      final i = l.node;
-      final bx = _ax[i] + (_bx[i] - _ax[i]) * l.along;
-      final by = _ay[i] + (_by[i] - _ay[i]) * l.along;
-      final a =
-          _abs[i] +
-          l.angle +
-          wind * 0.6 +
-          sin(time * flap + l.phase) * (0.15 + wind.abs() * 0.5);
-      final s = l.size * scale;
-      final dx = sin(a), dy = -cos(a);
-      final tip = Offset(bx + dx * s, by + dy * s);
-      final mid = Offset(bx + dx * s * 0.45, by + dy * s * 0.45);
-      final side = Offset(-dy * s * 0.22, dx * s * 0.22);
-      _poly(path, [Offset(bx, by), mid + side, tip, mid - side]);
+      _addLeaf(path, l, wind, time, scale);
     }
+  }
+
+  void _addLeaf(Path path, _Leaf l, double wind, double time, double scale) {
+    final i = l.node;
+    final bx = _ax[i] + (_bx[i] - _ax[i]) * l.along;
+    final by = _ay[i] + (_by[i] - _ay[i]) * l.along;
+    final flap = 3.5 + wind.abs() * 7;
+    final a =
+        _abs[i] +
+        l.angle +
+        wind * 0.6 +
+        sin(time * flap + l.phase) * (0.15 + wind.abs() * 0.5);
+    final s = l.size * scale;
+    final dx = sin(a), dy = -cos(a);
+    final tip = Offset(bx + dx * s, by + dy * s);
+    final mid = Offset(bx + dx * s * 0.45, by + dy * s * 0.45);
+    final side = Offset(-dy * s * 0.22, dx * s * 0.22);
+    _poly(path, [Offset(bx, by), mid + side, tip, mid - side]);
+  }
+
+  // ---- Tukre: darakht ko tane, bari shaakhon aur chhoti shaakhon mein baanto. Har tukra ek
+  // tasveer banta hai (apne patton samait) aur apne jor (pivot) pe alag jhoolta hai.
+  List<TreePiece>? _pieces;
+  List<TreePiece> get pieces => _pieces ??= _buildPieces();
+
+  List<TreePiece> _buildPieces() {
+    _pose(Offset.zero, 0, 0, 1);
+    final r = Random(_nodes.length);
+    final pieces = <TreePiece>[];
+    final pieceOf = List.filled(_nodes.length, 0);
+    for (var i = 0; i < _nodes.length; i++) {
+      final n = _nodes[i];
+      if (n.parent < 0) {
+        if (pieces.isEmpty) pieces.add(TreePiece(-1, 0, Offset.zero, 0));
+        pieceOf[i] = 0;
+        continue;
+      }
+      final parentPiece = pieceOf[n.parent];
+      final pd = _nodes[n.parent].depth;
+      // Naya tukra: tane se nikli shaakh, ya bari shaakh se nikli chhoti shaakh
+      if ((pd == 0 && n.depth > 0) || (n.depth == 3 && pd == 2)) {
+        final tier = pieces[parentPiece].tier + 1;
+        pieces.add(
+          TreePiece(
+            parentPiece,
+            tier,
+            Offset(_ax[i], _ay[i]),
+            r.nextDouble() * 6.28,
+          ),
+        );
+        pieces[parentPiece].children.add(pieces.length - 1);
+        pieceOf[i] = pieces.length - 1;
+      } else {
+        pieceOf[i] = parentPiece;
+      }
+      pieces[pieceOf[i]].nodes.add(i);
+    }
+    for (var i = 0; i < _nodes.length; i++) {
+      if (_nodes[i].parent < 0) pieces[0].nodes.add(i);
+    }
+    for (var k = 0; k < _leaves.length; k++) {
+      pieces[pieceOf[_leaves[k].node]].leaves.add(k);
+    }
+    return pieces;
+  }
+
+  /// Ek tukre ki (shaakhen, patte) bina hawa ke — root (0,0) ke hisaab se
+  (Path, Path) pieceShape(int piece) {
+    final pc = pieces[piece];
+    _pose(Offset.zero, 0, 0, 1);
+    final branches = Path(), leaves = Path();
+    for (final i in pc.nodes) {
+      _addNode(branches, i, 1);
+    }
+    for (final k in pc.leaves) {
+      _addLeaf(leaves, _leaves[k], 0, 0, 1);
+    }
+    return (branches, leaves);
   }
 
   /// Saari shakalein ek hi direction (clockwise) mein, warna jahan do overlap
@@ -263,6 +382,9 @@ class TreeLayer {
   final double leafiness, minHeight, maxHeight, thickness;
   final Color color;
 
+  /// Patton ka rang — door wali layers mein shaakhon se halka (dhund mein fade)
+  final Color leafColor;
+
   /// Door ki layers mein sirf itne alag darakht (aadhe ulte/mirror) — memory bachane ke liye
   final int? variants;
   final _cache = <int, Tree>{};
@@ -271,6 +393,7 @@ class TreeLayer {
     required this.parallax,
     required this.spacing,
     required this.color,
+    required this.leafColor,
     required this.seed,
     this.scale = 1,
     this.maxDepth = 7,
