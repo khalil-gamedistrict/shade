@@ -122,6 +122,79 @@ class Level {
 
   double get width => solids.fold(0.0, (m, s) => max(m, s.right));
 
+  /// Level ka [from]..[to] hissa alag chapter ke liye: sab kuch khiska kar [from] ko x=100 pe le aata hai,
+  /// aur shuru mein thori zameen jor deta hai (taake player peeche gir na sake).
+  /// [from] kisi zameen (top 400) ke shuru pe hona chahiye.
+  Level slice(double from, double to, {required double goal}) {
+    final dx = 100 - from;
+    Rect sh(Rect r) => r.shift(Offset(dx, 0));
+    bool inside(double x) => x >= from - 1 && x <= to;
+    Profile shp(Profile p) =>
+        Profile([for (final (x, v) in p.points) (x + dx, v)]);
+    return Level(
+      solids: [
+        const Rect.fromLTRB(-600, 400, 101, 600),
+        for (final s in solids)
+          if (s.right > from && s.left < to) sh(s),
+      ],
+      spikes: [
+        for (final s in spikes)
+          if (inside(s.left)) sh(s),
+      ],
+      traps: [
+        for (final s in traps)
+          if (inside(s.left)) sh(s),
+      ],
+      saws: [
+        for (final s in saws)
+          if (inside(s.x))
+            Saw(
+              s.x + dx,
+              s.baseY,
+              range: s.range,
+              speed: s.speed,
+              radius: s.radius,
+            ),
+      ],
+      pendulums: [
+        for (final p in pendulums)
+          if (inside(p.pivot.dx))
+            Pendulum(
+              p.pivot + Offset(dx, 0),
+              p.length,
+              amplitude: p.amplitude,
+              speed: p.speed,
+              phase: p.phase,
+              radius: p.radius,
+            ),
+      ],
+      rocks: [
+        for (final r in rocks)
+          if (inside(r.x)) Rock(r.x + dx, r.triggerX + dx, radius: r.radius),
+      ],
+      movers: [
+        for (final m in movers)
+          if (inside(m.base.left))
+            Mover(
+              sh(m.base),
+              dx: m.dx,
+              dy: m.dy,
+              speed: m.speed,
+              phase: m.phase,
+            ),
+      ],
+      checkpoints: [
+        const Offset(100, 400),
+        for (final c in checkpoints)
+          if (c.dx > from + 50 && c.dx < to) c + Offset(dx, 0),
+      ],
+      goalX: goal + dx,
+      deathY: deathY,
+      wind: shp(wind),
+      rain: shp(rain),
+    );
+  }
+
   // Jump: ~117 oonchi, ~136 lambi (bina hawa ke). Saamne ki hawa mein ~110, peeche ki aandhi mein ~165.
   // Is liye gaddhay: aam ≤ 110, saamne ki hawa mein ≤ 85, seedhiyan ≤ 85 oonchi.
   static Level first() => const Level(

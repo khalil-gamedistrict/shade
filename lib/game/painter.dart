@@ -429,55 +429,87 @@ class WorldPainter extends CustomPainter {
       armB = (-0.08, 0.15);
     }
 
-    final hip = Offset(x, y - 16);
-    final shoulder = Offset(x + dir * 0.5, y - 27 + bob * 0.5);
+    final hip = Offset(x, y - 21);
+    final shoulder = Offset(x + dir * 0.5, y - 35 + bob * 0.5);
+
+    // Kamar pe bandha neza — shikaari ki pehchaan (sab se peeche)
+    canvas.drawLine(
+      Offset(x - dir * 9, y - 12 + bob * 0.5),
+      Offset(x + dir * 5, y - 50 + bob * 0.5),
+      Paint()
+        ..color = const Color(0xFF070707)
+        ..strokeWidth = 1.6,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(x + dir * 5, y - 50 + bob * 0.5)
+        ..lineTo(x + dir * 3.2, y - 45 + bob * 0.5)
+        ..lineTo(x + dir * 6.6, y - 45.6 + bob * 0.5)
+        ..close(),
+      _black,
+    );
 
     // Peeche wale baazu aur taang pehle (thore patle), taake gehraai lage
-    _limb(canvas, shoulder, armB, 5.5, 5.5, 2.8, dir);
+    _limb(canvas, shoulder, armB, 7.5, 7, 2.5, dir);
     _leg(canvas, hip, legB, dir);
 
     // Jism — kurta jo neeche se thora phaila hua hai
     final torso = Path()
-      ..moveTo(x - 4.5, y - 29 + bob * 0.5)
-      ..quadraticBezierTo(x, y - 31 + bob * 0.5, x + 4.5, y - 29 + bob * 0.5)
-      ..lineTo(x + 5, y - 14)
-      ..quadraticBezierTo(x, y - 13, x - 5, y - 14)
+      // Chaure kandhe, patli kamar, kamar pe lipta kapra
+      ..moveTo(x - 5.5, y - 36 + bob * 0.5)
+      ..quadraticBezierTo(x, y - 38 + bob * 0.5, x + 5.5, y - 36 + bob * 0.5)
+      ..lineTo(x + 3.8, y - 22)
+      ..lineTo(x + 5.2, y - 16)
+      ..quadraticBezierTo(x, y - 15, x - 5.2, y - 16)
+      ..lineTo(x - 3.8, y - 22)
       ..close();
     canvas.drawPath(torso, _black);
 
     _leg(canvas, hip, legA, dir);
-    _limb(canvas, shoulder, armA, 5.5, 5.5, 3.2, dir);
+    _limb(canvas, shoulder, armA, 7.5, 7, 2.9, dir);
 
-    // Sar — bara aur gol, bachay jaisa
-    final head = Offset(x + dir * 1.5, y - 37.5 + bob);
-    canvas.drawCircle(head, 9.5, _black);
+    // Sar — jawan aadmi ka, jism ke hisaab se chhota
+    final head = Offset(x + dir * 1.2, y - 44.5 + bob);
+    canvas.drawCircle(head, 6.3, _black);
     // Gardan
     canvas.drawRect(
       Rect.fromCenter(
-        center: Offset(x + dir * 0.8, y - 29.5 + bob),
-        width: 5,
+        center: Offset(x + dir * 0.8, y - 38.5 + bob),
+        width: 3.6,
         height: 4,
       ),
       _black,
     );
 
-    // Baal — peeche aur upar ki taraf nukeele gucchay
+    // Baal — oopar bikhre, peeche bandhi choti jo hawa mein lehrati hai
     final hair = Path();
     const spikes = 6;
     for (var k = 0; k <= spikes * 2; k++) {
       final t = -pi * 0.92 + k * (pi * 0.62) / (spikes * 2);
       final back = 1 - k / (spikes * 2); // peeche wale baal lambe
-      final r = k.isEven ? 8.8 : 10.8 + back * 2.2 + (k % 4 == 1 ? 0.8 : 0);
+      final r = k.isEven ? 5.8 : 7.2 + back * 1.6 + (k % 4 == 1 ? 0.6 : 0);
       final pt =
           head +
           Offset(
-            cos(t) * r * dir - dir * (k.isOdd ? back * 1.5 : 0),
+            cos(t) * r * dir - dir * (k.isOdd ? back * 1.0 : 0),
             sin(t) * r,
           );
       k == 0 ? hair.moveTo(pt.dx, pt.dy) : hair.lineTo(pt.dx, pt.dy);
     }
     hair.close();
     canvas.drawPath(hair, _black);
+    final wind = world.windAt(x);
+    final tail = head + Offset(-dir * 6, -2);
+    final tip =
+        tail + Offset(-dir * 7 + wind * 4, 5 + sin(world.time * 5) * 1.2);
+    canvas.drawLine(
+      tail,
+      tip,
+      Paint()
+        ..color = const Color(0xFF070707)
+        ..strokeWidth = 2.6
+        ..strokeCap = StrokeCap.round,
+    );
 
     // Badi chamakti aankhen — har kuch second baad palak jhapakti hain
     final blink = world.time % 3.7 > 3.57;
@@ -485,23 +517,23 @@ class WorldPainter extends CustomPainter {
     final glow = Paint()
       ..color = Colors.white.withValues(alpha: 0.35)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-    for (final (dx, w) in [(3.4, 2.9), (7.0, 2.5)]) {
-      final c = head + Offset(dir * dx, -0.8);
-      final r = Rect.fromCenter(center: c, width: w, height: blink ? 0.6 : 4.2);
+    for (final (dx, w) in [(2.4, 2.2), (4.9, 1.9)]) {
+      final c = head + Offset(dir * dx, -0.5);
+      final r = Rect.fromCenter(center: c, width: w, height: blink ? 0.5 : 3.0);
       canvas.drawOval(r.inflate(1), glow);
       canvas.drawOval(r, eye);
     }
   }
 
   void _leg(Canvas canvas, Offset hip, (double, double) a, double dir) {
-    final foot = _limb(canvas, hip, a, 8, 8.5, 4.2, dir);
+    final foot = _limb(canvas, hip, a, 10.5, 10.8, 3.6, dir);
     // Chhota sa joota, aagay ki taraf
     canvas.drawLine(
       foot,
-      foot + Offset(dir * 3.5, 0),
+      foot + Offset(dir * 3.2, 0),
       Paint()
         ..color = const Color(0xFF070707)
-        ..strokeWidth = 3.5
+        ..strokeWidth = 3.0
         ..strokeCap = StrokeCap.round,
     );
   }

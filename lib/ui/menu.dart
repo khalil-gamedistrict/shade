@@ -1,0 +1,303 @@
+// Title screen, chapter ka naam (har chapter se pehle), aur "jald aa raha hai"
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../game/chapters.dart';
+
+/// Kaun se chapter khatam ho chuke — phone/browser pe save rehta hai
+class Progress {
+  final done = <int>{};
+
+  Future<void> load() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      done.addAll((p.getStringList('done') ?? []).map(int.parse));
+    } catch (_) {
+      // Tests/private browsing mein storage na mile to bas khaali progress
+    }
+  }
+
+  Future<void> markDone(int chapter) async {
+    done.add(chapter);
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setStringList('done', done.map((e) => '$e').toList());
+    } catch (_) {}
+  }
+}
+
+const _white = Color(0xFFE8E8E8);
+const _dim = Color(0x66E8E8E8);
+
+/// Space/Enter ya tap — dono se aage
+class _Advance extends StatelessWidget {
+  final VoidCallback onAdvance;
+  final Widget child;
+  const _Advance({required this.onAdvance, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.space): onAdvance,
+        const SingleActivator(LogicalKeyboardKey.enter): onAdvance,
+      },
+      child: Focus(
+        autofocus: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onAdvance,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class TitleScreen extends StatelessWidget {
+  final Progress progress;
+  final void Function(Chapter) onPlay;
+  const TitleScreen({super.key, required this.progress, required this.onPlay});
+
+  @override
+  Widget build(BuildContext context) {
+    // "Khelo" = pehla bana hua chapter jo abhi khatam nahi hua
+    final next = chapters.firstWhere(
+      (c) => c.ready && !progress.done.contains(c.number),
+      orElse: () => chapters.first,
+    );
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _Advance(
+        onAdvance: () => onPlay(next),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              colors: [Color(0xFF3A3C3D), Colors.black],
+              radius: 1.1,
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'SHADE',
+                  style: TextStyle(
+                    fontSize: 64,
+                    letterSpacing: 18,
+                    color: _white,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'ek shohar ki wapsi',
+                  style: TextStyle(fontSize: 14, letterSpacing: 4, color: _dim),
+                ),
+                const SizedBox(height: 36),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final c in chapters)
+                      _ChapterTile(
+                        c,
+                        done: progress.done.contains(c.number),
+                        onTap: () => onPlay(c),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  'Tap / Space — Chapter ${next.number} khelo',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    letterSpacing: 2,
+                    color: _dim,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChapterTile extends StatelessWidget {
+  final Chapter chapter;
+  final bool done;
+  final VoidCallback onTap;
+  const _ChapterTile(this.chapter, {required this.done, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = chapter.ready ? _white : _dim;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: 112,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: chapter.ready ? Colors.white24 : Colors.white10,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '${chapter.number}',
+              style: TextStyle(
+                fontSize: 22,
+                color: color,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              chapter.title,
+              style: TextStyle(fontSize: 13, letterSpacing: 1.5, color: color),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              done ? '✓' : (chapter.ready ? ' ' : 'jald'),
+              style: const TextStyle(fontSize: 11, color: _dim),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Chapter shuru hone se pehle: kaale parde pe aahista ubharta naam
+class ChapterCard extends StatefulWidget {
+  final Chapter chapter;
+  final VoidCallback onDone;
+  const ChapterCard({super.key, required this.chapter, required this.onDone});
+
+  @override
+  State<ChapterCard> createState() => _ChapterCardState();
+}
+
+class _ChapterCardState extends State<ChapterCard> {
+  bool visible = false;
+  bool finished = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(
+      const Duration(milliseconds: 100),
+      () => mounted ? setState(() => visible = true) : null,
+    );
+    Future.delayed(
+      const Duration(milliseconds: 2600),
+      () => mounted ? setState(() => visible = false) : null,
+    );
+    Future.delayed(const Duration(milliseconds: 3600), _finish);
+  }
+
+  void _finish() {
+    if (finished || !mounted) return;
+    finished = true;
+    widget.onDone();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _Advance(
+        onAdvance: _finish,
+        child: Center(
+          child: AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: const Duration(milliseconds: 900),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'CHAPTER ${widget.chapter.number}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    letterSpacing: 6,
+                    color: _dim,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.chapter.title,
+                  style: const TextStyle(
+                    fontSize: 44,
+                    letterSpacing: 8,
+                    color: _white,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Jo chapter abhi bana nahi
+class ComingSoon extends StatelessWidget {
+  final Chapter chapter;
+  final VoidCallback onBack;
+  const ComingSoon({super.key, required this.chapter, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _Advance(
+        onAdvance: onBack,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'CHAPTER ${chapter.number}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  letterSpacing: 6,
+                  color: _dim,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                chapter.title,
+                style: const TextStyle(
+                  fontSize: 44,
+                  letterSpacing: 8,
+                  color: _white,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'jald aa raha hai',
+                style: TextStyle(fontSize: 14, letterSpacing: 3, color: _dim),
+              ),
+              const SizedBox(height: 28),
+              const Text(
+                'Tap — menu',
+                style: TextStyle(fontSize: 12, letterSpacing: 2, color: _dim),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shade/game/chapters.dart';
 import 'package:shade/game/weather.dart';
 import 'package:shade/game/world.dart';
 import 'package:shade/main.dart';
@@ -224,40 +225,66 @@ void main() {
   });
 
   test('asal level ka har khaali gaddha nayi jump se paar ho sakta hai', () {
-    final level = Level.first();
-    final jumpTime = 2 * World.jumpVelocity / World.gravity;
-    final jumpHeight =
-        World.jumpVelocity * World.jumpVelocity / (2 * World.gravity);
-    // Zameen ke hisse jahan khara ho sakte hain (deewarein bhi)
-    final surfaces = [...level.solids]
-      ..sort((a, b) => a.left.compareTo(b.left));
-    var reach = surfaces.first;
-    for (final next in surfaces.skip(1)) {
-      if (next.left <= reach.right) {
-        if (next.right > reach.right) reach = next;
-        continue;
-      }
-      final gap = next.left - reach.right;
-      final hasMover = level.movers.any(
-        (m) => m.base.right > reach.right && m.base.left < next.left,
-      );
-      if (!hasMover) {
-        // Sab se buri hawa: saamne ki hawa poori, peeche ki hawa sirf 40%
-        final w = level.wind.at((reach.right + next.left) / 2);
-        final push = (w < 0 ? w : w * 0.4) * World.windPush;
-        final distance = jumpTime * (World.speed + push);
-        expect(
-          gap - World.playerW,
-          lessThan(distance * 0.85),
-          reason: 'gaddha ${reach.right}–${next.left}',
-        );
-        expect(
-          reach.top - next.top,
-          lessThan(jumpHeight * 0.85),
-          reason: 'oonchai ${next.left}',
-        );
-      }
-      reach = next;
-    }
+    expectJumpable(Level.first());
   });
+
+  test('har bana hua chapter theek hai: checkpoint zameen pe, gaddhay paar, goal pe zameen', () {
+    for (final c in chapters.where((c) => c.ready)) {
+      final level = c.level!();
+      expect(
+        level.checkpoints.first,
+        const Offset(100, 400),
+        reason: 'chapter ${c.number}',
+      );
+      for (final cp in level.checkpoints) {
+        final onGround = level.solids.any(
+          (s) => s.top == cp.dy && cp.dx > s.left && cp.dx < s.right,
+        );
+        expect(onGround, isTrue, reason: 'chapter ${c.number} checkpoint $cp');
+      }
+      expect(
+        level.solids.any((s) => level.goalX > s.left && level.goalX < s.right),
+        isTrue,
+        reason: 'chapter ${c.number} goal',
+      );
+      expectJumpable(level);
+    }
+    expect(chapters.length, 6);
+  });
+}
+
+void expectJumpable(Level level) {
+  final jumpTime = 2 * World.jumpVelocity / World.gravity;
+  final jumpHeight =
+      World.jumpVelocity * World.jumpVelocity / (2 * World.gravity);
+  // Zameen ke hisse jahan khara ho sakte hain (deewarein bhi)
+  final surfaces = [...level.solids]..sort((a, b) => a.left.compareTo(b.left));
+  var reach = surfaces.first;
+  for (final next in surfaces.skip(1)) {
+    if (next.left <= reach.right) {
+      if (next.right > reach.right) reach = next;
+      continue;
+    }
+    final gap = next.left - reach.right;
+    final hasMover = level.movers.any(
+      (m) => m.base.right > reach.right && m.base.left < next.left,
+    );
+    if (!hasMover) {
+      // Sab se buri hawa: saamne ki hawa poori, peeche ki hawa sirf 40%
+      final w = level.wind.at((reach.right + next.left) / 2);
+      final push = (w < 0 ? w : w * 0.4) * World.windPush;
+      final distance = jumpTime * (World.speed + push);
+      expect(
+        gap - World.playerW,
+        lessThan(distance * 0.85),
+        reason: 'gaddha ${reach.right}–${next.left}',
+      );
+      expect(
+        reach.top - next.top,
+        lessThan(jumpHeight * 0.85),
+        reason: 'oonchai ${next.left}',
+      );
+    }
+    reach = next;
+  }
 }
