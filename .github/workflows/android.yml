@@ -48,13 +48,13 @@ jobs:
         run: flutter test
 
       # 6. APK build — version aur commit app ke andar likh dete hain.
-      #    UNLOCK_ALL=false: asli game jaisa, agla chapter tabhi khulta hai jab pichhla paar ho
-      #    (local testing mein saare chapter khule rehte hain).
+      #    UNLOCK_ALL=true: abhi testing ke liye saare chapter khule. Asli release mein false karna
+      #    (tab agla chapter tabhi khulta hai jab pichhla paar ho).
       - name: Build APK
         run: |
           flutter build apk --release \
             --build-number=${{ github.run_number }} \
-            --dart-define=UNLOCK_ALL=false \
+            --dart-define=UNLOCK_ALL=true \
             --dart-define=BUILD_INFO="#${{ github.run_number }} · ${GITHUB_SHA::7}"
 
       # 7. APK ko save karo — Actions run page pe "Artifacts" mein milega
