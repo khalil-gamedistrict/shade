@@ -42,10 +42,11 @@ class Mover {
   }
 }
 
-/// Oopar se girta patthar: player [triggerX] paar kare to [x] pe girta hai, gir kar rasta rokta hai
-class Rock {
+/// Darakht se toot kar girti bhaari shaakh: player [triggerX] paar kare to chatak kar [x] pe girti hai,
+/// zameen pe gir kar leti hui lakdi rasta rokti hai (us ke oopar se koodna parta hai)
+class Branch {
   final double x, triggerX, radius;
-  const Rock(this.x, this.triggerX, {this.radius = 16});
+  const Branch(this.x, this.triggerX, {this.radius = 16});
 }
 
 /// Rassi pe jhoolta lakkar: [pivot] se [length] lamba, [amplitude] radian tak jhoolta hai
@@ -79,7 +80,7 @@ enum DeathKind {
   trap, // shikanje mein paon
   pendulum, // bhaari jhoolta lakkar — door uchhal kar
   saw, // saw ki takkar — thora uchhal kar
-  rock, // oopar se patthar — neeche dab gaya
+  branch, // darakht se tooti bhaari shaakh — neeche dab gaya
   spear, // neza laga
   caught, // shikaariyon ne pakar liya
   burn, // aag mein jal gaya
@@ -144,7 +145,7 @@ class Level {
   final double deathY;
   final List<Rect> traps; // shikanje (bear traps)
   final List<Mover> movers;
-  final List<Rock> rocks;
+  final List<Branch> branches;
   final List<Pendulum> pendulums;
   final Chase? chase;
   final List<Rect> fires; // zameen pe jalti aag (chhoone se maut)
@@ -167,7 +168,7 @@ class Level {
     this.deathY = 650,
     this.traps = const [],
     this.movers = const [],
-    this.rocks = const [],
+    this.branches = const [],
     this.pendulums = const [],
     this.chase,
     this.fires = const [],
@@ -244,9 +245,9 @@ class Level {
               radius: p.radius,
             ),
       ],
-      rocks: [
-        for (final r in rocks)
-          if (inside(r.x)) Rock(r.x + dx, r.triggerX + dx, radius: r.radius),
+      branches: [
+        for (final r in branches)
+          if (inside(r.x)) Branch(r.x + dx, r.triggerX + dx, radius: r.radius),
       ],
       movers: [
         for (final m in movers)
@@ -337,7 +338,7 @@ class Level {
       Pendulum(Offset(3260, 170), 175, speed: 1.5, phase: 1),
       Pendulum(Offset(6110, 160), 185, speed: 1.7, phase: 2),
     ],
-    rocks: [Rock(1680, 1500), Rock(3830, 3680), Rock(6700, 6540)],
+    branches: [Branch(1680, 1500), Branch(3830, 3680), Branch(6700, 6540)],
     movers: [
       Mover(Rect.fromLTWH(2505, 370, 90, 18), dx: 60, speed: 0.9),
       Mover(Rect.fromLTWH(2790, 360, 80, 18), dy: 45, speed: 1.2),
@@ -392,7 +393,8 @@ enum GameEvent {
   death,
   checkpoint,
   win,
-  rock,
+  branchBreak, // shaakh toot'ne ki karak
+  branchLand,
   chaseStart,
   spearThrow,
   spearHit,
@@ -410,7 +412,7 @@ class World {
   static const double respawnDelay = 2.4; // girne aur tarapne ka manzar dikhe
   static const double windPush =
       38; // poori aandhi player ko itna px/s dhakelti hai
-  static const double rockGravity = 1100;
+  static const double branchGravity = 1100;
 
   final Level level;
   late Offset pos; // player ka bottom-center
@@ -425,9 +427,9 @@ class World {
   PlayerState state = PlayerState.alive;
   final List<GameEvent> events = [];
 
-  // Patthar: 0 = intezar, 1 = gir raha, 2 = zameen pe (rasta rokta hai)
-  late final List<int> rockState;
-  late final List<double> rockY, rockVy;
+  // Shaakh: 0 = darakht pe, 1 = gir rahi, 2 = zameen pe (rasta rokti hai)
+  late final List<int> branchState;
+  late final List<double> branchY, branchVy;
   int? _standingOn; // kis hilte platform pe khara hai
 
   // Maut ka manzar: kaise mara, kis taraf gira, kab
@@ -544,9 +546,9 @@ class World {
 
   World([Level? level]) : level = level ?? Level.first() {
     pos = this.level.checkpoints.first;
-    rockState = List.filled(this.level.rocks.length, 0);
-    rockY = List.filled(this.level.rocks.length, -40);
-    rockVy = List.filled(this.level.rocks.length, 0);
+    branchState = List.filled(this.level.branches.length, 0);
+    branchY = List.filled(this.level.branches.length, -40);
+    branchVy = List.filled(this.level.branches.length, 0);
   }
 
   double _groundBelow(double x) {
@@ -557,24 +559,25 @@ class World {
     return best;
   }
 
-  /// Zameen pe gira patthar — thos rukawat
-  Rect rockRect(int i) {
-    final r = level.rocks[i];
+  /// Girti/giri hui shaakh — zameen pe thos rukawat
+  Rect branchRect(int i) {
+    final r = level.branches[i];
+    // Leti hui lambi lakdi: chaurai radius ka ~4.6 guna, oonchai ~1.1 guna
     return Rect.fromLTWH(
-      r.x - r.radius,
-      rockY[i] - r.radius * 0.6,
-      r.radius * 2,
-      r.radius * 1.6,
+      r.x - r.radius * 2.3,
+      branchY[i] - r.radius * 0.55,
+      r.radius * 4.6,
+      r.radius * 1.1,
     );
   }
 
-  /// Is waqt ki saari thos cheezen: zameen, hilte platform, gire hue patthar
+  /// Is waqt ki saari thos cheezen: zameen, hilte platform, giri hui shaakhen
   List<Rect> solidsNow() => [
     ...level.solids,
     for (final m in level.movers) m.rectAt(time),
     ...level.refuge,
-    for (var i = 0; i < level.rocks.length; i++)
-      if (rockState[i] == 2) rockRect(i),
+    for (var i = 0; i < level.branches.length; i++)
+      if (branchState[i] == 2) branchRect(i),
   ];
 
   /// Is jagah abhi hawa kitni hai — level ki hawa + jhonke (gusts) jo waqt ke saath aate jaate hain
@@ -622,7 +625,7 @@ class World {
       } else {
         _updateBody(dt);
       }
-      _updateRocks(dt); // jo patthar gir raha tha woh zameen tak gire
+      _updateBranches(dt); // jo shaakh gir rahi thi woh zameen tak gire
       if (deadTimer <= 0) _respawn();
       return;
     }
@@ -633,7 +636,7 @@ class World {
       final d = m.rectAt(time).topLeft - m.rectAt(time - dt).topLeft;
       pos += d;
     }
-    _updateRocks(dt);
+    _updateBranches(dt);
     _updateChase(dt);
     _updateHunterBodies(dt);
     _updateSpears(dt);
@@ -767,11 +770,9 @@ class World {
         return DeathKind.pendulum;
       }
     }
-    for (var i = 0; i < level.rocks.length; i++) {
-      final rock = level.rocks[i];
-      if (rockState[i] == 1 &&
-          hitsCircle(Offset(rock.x, rockY[i]), rock.radius)) {
-        return DeathKind.rock;
+    for (var i = 0; i < level.branches.length; i++) {
+      if (branchState[i] == 1 && branchRect(i).overlaps(r)) {
+        return DeathKind.branch;
       }
     }
     for (final saw in level.saws) {
@@ -844,18 +845,24 @@ class World {
     }
   }
 
-  void _updateRocks(double dt) {
-    for (var i = 0; i < level.rocks.length; i++) {
-      final rock = level.rocks[i];
-      if (rockState[i] == 0 && pos.dx >= rock.triggerX) rockState[i] = 1;
-      if (rockState[i] != 1) continue;
-      rockVy[i] += rockGravity * dt;
-      rockY[i] += rockVy[i] * dt;
-      final floor = _groundBelow(rock.x) - rock.radius;
-      if (rockY[i] >= floor) {
-        rockY[i] = floor;
-        rockState[i] = 2;
-        events.add(GameEvent.rock);
+  void _updateBranches(double dt) {
+    for (var i = 0; i < level.branches.length; i++) {
+      final branch = level.branches[i];
+      if (branchState[i] == 0 && pos.dx >= branch.triggerX) {
+        branchState[i] = 1;
+        events.add(
+          GameEvent.branchBreak,
+        ); // oopar shaakh chatakti hai — khatre ki ghanti
+      }
+      if (branchState[i] != 1) continue;
+      branchVy[i] += branchGravity * dt;
+      branchY[i] += branchVy[i] * dt;
+      final floor =
+          _groundBelow(branch.x) - branch.radius * 0.55; // zameen pe leti hui
+      if (branchY[i] >= floor) {
+        branchY[i] = floor;
+        branchState[i] = 2;
+        events.add(GameEvent.branchLand);
       }
     }
   }
@@ -956,8 +963,8 @@ class World {
     final solids = [
       ...level.solids,
       ...level.refuge,
-      for (var i = 0; i < level.rocks.length; i++)
-        if (rockState[i] == 2) rockRect(i),
+      for (var i = 0; i < level.branches.length; i++)
+        if (branchState[i] == 2) branchRect(i),
     ];
     final hazards = [...level.spikes, ...level.traps, ...level.fires];
     final stunned = time < hunterStunUntil;
@@ -1170,12 +1177,12 @@ class World {
       _throwTimer = 2.5;
       _grace = 2;
     }
-    // Checkpoint ke aage wale patthar dobara oopar — phir se girenge
-    for (var i = 0; i < level.rocks.length; i++) {
-      if (level.rocks[i].triggerX > pos.dx) {
-        rockState[i] = 0;
-        rockY[i] = -40;
-        rockVy[i] = 0;
+    // Checkpoint ke aage wali shaakhen dobara darakht pe — phir se girengi
+    for (var i = 0; i < level.branches.length; i++) {
+      if (level.branches[i].triggerX > pos.dx) {
+        branchState[i] = 0;
+        branchY[i] = -40;
+        branchVy[i] = 0;
       }
     }
     state = PlayerState.alive;

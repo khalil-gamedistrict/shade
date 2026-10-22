@@ -16,7 +16,7 @@ Input autopilot(World w, {double stopAt = double.infinity}) {
   // Khatra saamne
   final hazards = [...level.spikes, ...level.traps, ...level.fires];
   final danger = hazards.any((h) => h.overlaps(ahead.inflate(4)));
-  // Saamne oonchi cheez (deewar, seedhi, gira patthar)
+  // Saamne oonchi cheez (deewar, seedhi, giri shaakh)
   final wall = solids.any((s) => s.overlaps(ahead) && s.top < feet - 3);
   // Saamne zameen khatam (gaddha)
   bool groundAt(double gx) => solids.any(

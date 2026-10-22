@@ -28,7 +28,7 @@ Level ashes() => const Level(
     Rect.fromLTWH(2620, 384, 60, 16),
   ],
   traps: [Rect.fromLTWH(2010, 390, 34, 10)],
-  rocks: [Rock(1380, 1270), Rock(2750, 2600)],
+  branches: [Branch(1380, 1270), Branch(2750, 2600)],
   huts: [260, 640, 1080, 1420, 1820, 2230, 2560, 2900],
   checkpoints: [
     Offset(100, 400),
@@ -77,7 +77,7 @@ Level river() => const Level(
   spikes: [Rect.fromLTWH(1050, 384, 48, 16), Rect.fromLTWH(2050, 384, 48, 16)],
   saws: [],
   pendulums: [Pendulum(Offset(2250, 170), 175, speed: 1.5)],
-  rocks: [Rock(2700, 2580)],
+  branches: [Branch(2700, 2580)],
   traps: [Rect.fromLTWH(2850, 390, 34, 10)],
   checkpoints: [
     Offset(100, 400),
@@ -117,7 +117,7 @@ Level cliffs() => const Level(
   traps: [Rect.fromLTWH(3300, 350, 34, 10)],
   saws: [Saw(2350, 290, speed: 1.6)],
   pendulums: [Pendulum(Offset(1380, 100), 165, speed: 1.5)],
-  rocks: [Rock(1650, 1530)],
+  branches: [Branch(1650, 1530)],
   checkpoints: [
     Offset(100, 400),
     Offset(1030, 280),
@@ -159,7 +159,7 @@ Level homecoming() => const Level(
   traps: [Rect.fromLTWH(2900, 390, 34, 10)],
   saws: [Saw(2700, 320, speed: 1.8)],
   pendulums: [Pendulum(Offset(1150, 170), 175, speed: 1.6)],
-  rocks: [Rock(1850, 1760)],
+  branches: [Branch(1850, 1760)],
   checkpoints: [
     Offset(100, 400),
     Offset(790, 400),

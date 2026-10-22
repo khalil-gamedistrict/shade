@@ -178,12 +178,12 @@ void main() {
     expect(w.state, PlayerState.alive);
   });
 
-  test('patthar paas jaane pe girta hai, neeche khare ko maarta hai, phir rasta rokta hai', () {
+  test('shaakh paas jaane pe chatak kar girti hai, neeche khare ko maarti hai, phir rasta rokti hai', () {
     const level = Level(
       solids: [Rect.fromLTWH(0, 400, 2000, 200)],
       spikes: [],
       saws: [],
-      rocks: [Rock(300, 250)],
+      branches: [Branch(300, 220)],
       checkpoints: [Offset(50, 400), Offset(200, 400)],
       goalX: 1900,
     );
@@ -192,13 +192,16 @@ void main() {
     under.update(2, Input());
     expect(under.state, PlayerState.dead);
 
-    // Paas aa kar ruk jaye to patthar aagay gir kar rukawat ban jata hai
-    final w = World(level)..pos = const Offset(260, 400);
+    // Paas aa kar ruk jaye to shaakh aagay gir kar rukawat ban jaati hai (lakdi 263–337)
+    final w = World(level)..pos = const Offset(230, 400);
     w.update(2, Input());
-    expect(w.rockState[0], 2);
-    expect(w.events, contains(GameEvent.rock));
+    expect(w.branchState[0], 2);
+    expect(
+      w.events,
+      containsAll([GameEvent.branchBreak, GameEvent.branchLand]),
+    );
     w.update(1, Input()..right = true);
-    expect(w.pos.dx, lessThan(300 - 16)); // patthar ke paar nahi gaya
+    expect(w.pos.dx, lessThan(300 - 16 * 2.3)); // lakdi ke paar nahi gaya
     expect(w.state, PlayerState.alive);
   });
 
@@ -447,14 +450,14 @@ void main() {
       List<Rect> traps = const [],
       List<Saw> saws = const [],
       List<Pendulum> pendulums = const [],
-      List<Rock> rocks = const [],
+      List<Branch> branches = const [],
     }) => Level(
       solids: const [Rect.fromLTWH(-1000, 400, 4000, 200)],
       spikes: spikes,
       traps: traps,
       saws: saws,
       pendulums: pendulums,
-      rocks: rocks,
+      branches: branches,
       checkpoints: const [Offset(500, 400)],
       goalX: 2900,
     );
@@ -483,8 +486,8 @@ void main() {
         DeathKind.saw,
       );
       expect(
-        runInto(flat(rocks: [const Rock(500, 0)])).deathKind,
-        DeathKind.rock,
+        runInto(flat(branches: [const Branch(500, 0)])).deathKind,
+        DeathKind.branch,
       );
     });
 

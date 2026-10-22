@@ -167,11 +167,17 @@ class WorldPainter extends CustomPainter {
     extra?.call(canvas);
     _hunters(canvas, camX, viewW);
     _player(canvas);
-    // Patthar player ke baad — neeche dabi laash patthar ke neeche dikhe
-    for (var i = 0; i < world.level.rocks.length; i++) {
-      if (world.rockState[i] == 0) continue; // abhi oopar chhupa hai
-      final rock = world.level.rocks[i];
-      _rock(canvas, Offset(rock.x, world.rockY[i]), rock.radius, i);
+    // Shaakhen player ke baad — neeche dabi laash lakdi ke neeche dikhe
+    for (var i = 0; i < world.level.branches.length; i++) {
+      if (world.branchState[i] == 0) continue; // abhi oopar chhupa hai
+      final branch = world.level.branches[i];
+      _branch(
+        canvas,
+        Offset(branch.x, world.branchY[i]),
+        branch.radius,
+        i,
+        falling: world.branchState[i] == 1,
+      );
     }
     _spears(canvas);
     _fightDust(canvas);
@@ -461,26 +467,75 @@ class WorldPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// Ubar-khaabar patthar
-  void _rock(Canvas canvas, Offset c, double r, int seed) {
-    final rnd = Random(seed * 7 + 3);
-    final path = Path();
-    for (var k = 0; k < 9; k++) {
-      final a = k / 9 * 2 * pi;
-      final rr = r * (0.8 + rnd.nextDouble() * 0.3);
-      final p = c + Offset(cos(a) * rr * 1.1, sin(a) * rr * 0.85);
-      k == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+  /// Darakht se tooti shaakh: lambi lakdi, chhaal ki lakeerein, ek sira toota hua (daantedaar), chhoti
+  /// tehniyan aur patte. Girte waqt ghoomti hai; zameen pe halki teRhi leti hai.
+  void _branch(
+    Canvas canvas,
+    Offset c,
+    double r,
+    int seed, {
+    required bool falling,
+  }) {
+    final len = r * 4.6, thick = r * 1.1;
+    final angle = falling
+        ? sin(world.time * 5 + seed) * 0.22
+        : (seed.isEven ? 0.05 : -0.05);
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(angle);
+    final half = len / 2;
+    // Lakdi: ek sira gol kata, doosra toota hua (daantedaar)
+    final wood = Path()
+      ..moveTo(-half + thick * 0.4, -thick / 2)
+      ..lineTo(half - 6, -thick / 2 + 1)
+      ..lineTo(half, -thick * 0.2)
+      ..lineTo(half - 5, -thick * 0.05)
+      ..lineTo(half + 2, thick * 0.15)
+      ..lineTo(half - 4, thick * 0.32)
+      ..lineTo(half - 1, thick / 2)
+      ..lineTo(-half + thick * 0.4, thick / 2)
+      ..arcToPoint(
+        Offset(-half + thick * 0.4, -thick / 2),
+        radius: Radius.circular(thick / 2),
+      )
+      ..close();
+    canvas.drawPath(wood, _black);
+    // Chhaal ki lakeerein
+    final bark = Paint()
+      ..color = const Color(0x33BFBFBF)
+      ..strokeWidth = 0.8;
+    for (var k = 0; k < 4; k++) {
+      final x = -half + 10 + k * len / 4.4;
+      canvas.drawLine(
+        Offset(x, -thick * 0.25),
+        Offset(x + 9, -thick * 0.18),
+        bark,
+      );
     }
-    path.close();
-    canvas.drawPath(path, _black);
-    // Halki roshni ki lakeer — taake girta patthar kaale patton ke saamne bhi dikhe
+    // Chhoti tehniyan aur patte
+    final twig = Paint()
+      ..color = const Color(0xFF070707)
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    for (final (x, a, l) in [
+      (-half * 0.3, -0.7, 14.0),
+      (half * 0.25, -1.0, 11.0),
+      (half * 0.55, 0.9, 9.0),
+    ]) {
+      final from = Offset(x, -thick / 2);
+      final to = from + Offset(sin(a) * l, -cos(a) * l);
+      canvas.drawLine(from, to, twig);
+      canvas.drawOval(Rect.fromCenter(center: to, width: 6, height: 3), _black);
+    }
+    // Halki roshni ki lakeer — taake girti shaakh andhere patton ke saamne bhi dikhe
     canvas.drawPath(
-      path,
+      wood,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = const Color(0x66E0E0E0),
+        ..strokeWidth = 1.1
+        ..color = const Color(0x55E0E0E0),
     );
+    canvas.restore();
   }
 
   void _spikes(Canvas canvas, Rect s) {
@@ -696,8 +751,8 @@ class WorldPainter extends CustomPainter {
           );
         case DeathKind.spear:
           dying(spear: world.spearAngle);
-        case DeathKind.rock:
-          dying(speed: 3); // bhaari patthar — foran dab gaya
+        case DeathKind.branch:
+          dying(speed: 3); // bhaari shaakh — foran dab gaya
         case DeathKind.spike:
           dying(raise: 9); // kaanton ke oopar
         case DeathKind.caught:

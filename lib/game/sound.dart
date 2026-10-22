@@ -19,7 +19,7 @@ class Sound {
     GameEvent.death: (['death'], 0.9),
     GameEvent.checkpoint: (['checkpoint'], 0.45),
     GameEvent.win: (['win'], 0.7),
-    GameEvent.rock: (['land'], 1.0), // patthar girne ki dhamak
+    GameEvent.branchLand: (['land'], 1.0), // shaakh girne ki dhamak
     GameEvent.chaseStart: (['warcry'], 0.8),
     GameEvent.spearThrow: (['spear_throw1', 'spear_throw2'], 0.6),
     GameEvent.spearHit: (['spear_stick'], 0.8),
