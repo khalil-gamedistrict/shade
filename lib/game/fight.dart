@@ -218,6 +218,16 @@ final _second = <_Key>[
   (3.4, const FigurePose((0.2, -0.2), (-0.2, 0), (1.0, 0.7), (0.4, 0.5)), -54),
 ];
 
+// Khoh ke munh pe: shikaari bailon ke parde mein neza ghonp kar dekhta hai (World.probeLength)
+final _probe = <_Key>[
+  (0.0, _guard, 0),
+  (0.3, _cock, -4),
+  (0.45, _thrust, 10),
+  (0.75, _thrust, 12),
+  (1.0, _guard, 0),
+];
+
+(FigurePose, double) probeVines(double t) => _at(_probe, t);
 (FigurePose, double) heroFight(double t) => _at(_hero, t);
 (FigurePose, double) leadFight(double t) => _at(_lead, t);
 (FigurePose, double) secondFight(double t) => _at(_second, t);

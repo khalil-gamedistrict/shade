@@ -99,16 +99,18 @@ class _GameScreenState extends State<GameScreen>
     if (animating) setState(() {});
     if (world.state != shownState) {
       setState(() => shownState = world.state);
-      // Roshni tak pahunch gaya — thori der baad agla chapter
-      if (world.state == PlayerState.won && !_leaving) {
-        _leaving = true;
-        Future.delayed(const Duration(milliseconds: 7600), () {
-          // panah ka manzar
-          if (mounted) widget.onComplete();
-        });
-      }
+    }
+    // Panah ka manzar khatam: line dikha kar fade, phir agla chapter
+    if (_afterRefuge > _fadeAt + 1.6 && !_leaving) {
+      _leaving = true;
+      widget.onComplete();
     }
   }
+
+  /// Shikaari chale jaane (manzar mukammal) ke baad kitne second guzre
+  double get _afterRefuge =>
+      world.refugeDone ? world.refugeTime - world.refugeDoneAt : -1;
+  static const _fadeAt = 3.6;
 
   // Emulator / keyboard ke liye: arrow keys + space
   bool _onKey(KeyEvent e) {
@@ -288,8 +290,10 @@ class _GameScreenState extends State<GameScreen>
               child: IgnorePointer(
                 child: Opacity(
                   opacity:
-                      ((world.refugeTime - 2.2).clamp(0.0, 0.8) / 0.8) *
-                      (1 - ((world.refugeTime - 5.4).clamp(0.0, 0.6) / 0.6)),
+                      ((_afterRefuge - 0.2).clamp(0.0, 0.8) / 0.8) *
+                      (1 -
+                          ((_afterRefuge - _fadeAt + 0.4).clamp(0.0, 0.6) /
+                              0.6)),
                   child: const Text(
                     'Safe — for now.',
                     textAlign: TextAlign.center,
@@ -306,7 +310,7 @@ class _GameScreenState extends State<GameScreen>
           // Chapter khatam: screen aahista kaali ho jaati hai
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: shownState == PlayerState.won && world.refugeTime > 5.8
+              opacity: shownState == PlayerState.won && _afterRefuge > _fadeAt
                   ? 1
                   : 0,
               duration: const Duration(milliseconds: 1500),

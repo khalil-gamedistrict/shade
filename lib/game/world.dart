@@ -263,7 +263,7 @@ class Level {
       checkpoints: [
         const Offset(100, 400),
         for (final c in checkpoints)
-          if (c.dx > from + 50 && c.dx < to) c + Offset(dx, 0),
+          if (c.dx > from + 50 && c.dx < min(to, goal - 50)) c + Offset(dx, 0),
       ],
       goalX: goal + dx,
       deathY: deathY,
@@ -404,6 +404,8 @@ enum GameEvent {
   fightStart, // shikaariyon ne pakar liya — larai shuru
   fightHit, // larai mein waar
   escape, // hero chhoot kar bhaag nikla
+  rustle, // bailon ka parda sarsaraya
+  distract, // door jhaariyon se parinde ure
 }
 
 class World {
@@ -458,8 +460,15 @@ class World {
   double refugeTime = 0;
   bool sitting = false;
   double hunterDir = 1; // shikaariyon ka munh (laut'te waqt -1)
-  int _refugeStage = 0; // 0 = aa rahe, 1 = dhoondh rahe, 2 = laut rahe
+  int _refugeStage =
+      0; // 0 = aa rahe, 1 = dhoondh rahe, 2 = parindon ke peeche bhaag rahe
   double _searchStart = 0;
+  double distractTime = -1; // jab door parinde ure (refugeTime)
+  double refugeDoneAt = -1; // jab manzar khatam hua (refugeTime)
+  static const seatOffset = 85.0, curtainOffset = 6.0; // goalX se
+  static const probeStart = 1.5, probeLength = 1.0;
+  double get distractX =>
+      level.goalX - 190; // parinde yahan ki jhaariyon se urte hain
 
   // Larai: pakre jaane pe fauran maut nahi — [fightDuration] tak larai, phir maut.
   // Is dauraan ek dafa (ad dekh kar) chhoot kar bhaag sakte hain.
@@ -960,6 +969,25 @@ class World {
 
   /// Har shikaari apni jagah ([hunterX] - faasla) ki taraf daurta hai — hero jitni hi raftaar aur jump,
   /// aagay khatra, deewar ya gaddha dekh kar koodta hai. Gaddhay mein gira to bahar (baad mein peeche se aayega).
+  /// Hero jaisi kood ka raasta chal kar dekho: kisi zameen pe utrega (oonchi, barabar ya neechi)?
+  bool _jumpLands(double x, double y, double vx, List<Rect> solids) {
+    var py = y;
+    for (var t = 0.02; t < 2; t += 0.02) {
+      final nx = x + vx * t;
+      final ny = y - jumpVelocity * t + gravity * t * t / 2;
+      if (ny > py) {
+        // Neeche aa raha hai: is qadam mein kisi zameen ki sath paar ki?
+        final hit = solids.any(
+          (s) => nx >= s.left && nx <= s.right && s.top >= py && s.top <= ny,
+        );
+        if (hit) return true;
+      }
+      if (ny > y + 220) return false;
+      py = ny;
+    }
+    return false;
+  }
+
   void _updateHunterBodies(double dt) {
     if (!chaseActive) return;
     final solids = [
@@ -1020,10 +1048,9 @@ class World {
             groundNear(b.x + dir * 40, b.y + 13, 140);
         if ((danger || wall || edge) && !stepDown) {
           // Koodne se pehle dekho kahan giroge: sab se tez kood jo zameen pe utaare (gaddhay mein nahi)
-          const airTime = 2 * jumpVelocity / gravity;
           double? jumpSpeed;
           for (final v in [speed, speed * 0.82, speed * 0.66, speed * 0.52]) {
-            if (groundNear(b.x + dir * v * airTime, b.y, 90)) {
+            if (_jumpLands(b.x, b.y, dir * v, solids)) {
               jumpSpeed = v;
               break;
             }
@@ -1081,23 +1108,35 @@ class World {
   }
 
   void _updateRefuge(double dt) {
+    final firstFrame = refugeTime == 0;
     refugeTime += dt;
-    // Hero aahista chal kar chhajje ke neeche, phir chattan se tek laga kar baith jata hai
-    final seat = level.goalX + 70;
+    // Shikaari bohot peeche reh gaye hon to bhi panah tak pahunchen (dhoondne ka manzar dikhe)
+    if (firstFrame && chaseActive && hunterX < level.goalX - 700) {
+      hunterX = level.goalX - 700;
+    }
+    // Hero bailon ke parde se guzar kar khoh ke andar, pichhli chattan ke saath baith jata hai
+    final seat = level.goalX + seatOffset;
     if (pos.dx < seat) {
+      final before = pos.dx;
       facingRight = true;
       vx = 80;
       pos = Offset(min(seat, pos.dx + 80 * dt), pos.dy);
       walkPhase += dt * 6;
       grounded = true;
+      final curtain = level.goalX + curtainOffset;
+      if (before < curtain && pos.dx >= curtain) events.add(GameEvent.rustle);
     } else {
       vx = 0;
       walkPhase = 0;
       sitting = true;
     }
-    if (!chaseActive) return;
-    // Shikaari: kuch faasle tak aate hain, idhar udhar dekhte hain, phir laut jaate hain
-    final stopAt = level.goalX - 210;
+    if (!chaseActive) {
+      if (sitting && refugeDoneAt < 0) refugeDoneAt = refugeTime;
+      return;
+    }
+    // Shikaari: khoh ke munh tak aate hain, dhoondte hain, parde mein neza ghonpte hain —
+    // phir door jhaariyon se parinde urte hain aur woh samajhte hain hero udhar gaya.
+    final stopAt = level.goalX - 48; // parde se bas do qadam door
     switch (_refugeStage) {
       case 0:
         hunterDir = 1;
@@ -1111,17 +1150,45 @@ class World {
       case 1:
         hunterMoving = false;
         final k = refugeTime - _searchStart;
-        hunterDir = (k * 1.6).floor().isEven ? 1 : -1; // idhar udhar dekhna
-        if (k > 1.9) {
+        // Pehle khoh ki taraf, phir peeche mur kar, phir wapas — aur parde mein neza
+        hunterDir = k < 0.8 || (k > 1.4 && k < 3.1) ? 1 : -1;
+        final before = k - dt;
+        if (before < probeStart + 0.45 && k >= probeStart + 0.45) {
+          events.add(GameEvent.rustle); // neza bailon mein
+        }
+        if (before < 3.0 && k >= 3.0) {
+          distractTime = refugeTime;
+          events.add(GameEvent.distract); // door parinde phar-phara kar ure
+        }
+        if (k > 3.45) {
           _refugeStage = 2;
-          events.add(GameEvent.shout); // jhunjhla kar wapas
+          events.add(GameEvent.shout); // "udhar!"
         }
       default:
         hunterDir = -1;
         hunterMoving = true;
         hunterX -= 150 * dt;
+        if (refugeDoneAt < 0 && refugeTime - distractTime > 3.2) {
+          refugeDoneAt = refugeTime;
+        }
     }
   }
+
+  /// Aagay wala shikaari bailon mein neza ghonp raha ho to us ka waqt (0..[probeLength]), warna null
+  double? get probeT {
+    if (_refugeStage != 1) return null;
+    final k = refugeTime - _searchStart - probeStart;
+    return k >= 0 && k <= probeLength ? k : null;
+  }
+
+  /// Hero aankhen band, saans roke — jab tak shikaari qareeb hain
+  bool get hiding =>
+      chaseActive &&
+      state == PlayerState.won &&
+      (distractTime < 0 || refugeTime - distractTime < 1.6);
+
+  /// Panah ka manzar mukammal (shikaari chale gaye / hero baith gaya)
+  bool get refugeDone => refugeDoneAt >= 0;
 
   void _startFight() {
     state = PlayerState.fighting;

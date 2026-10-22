@@ -51,6 +51,10 @@ SOURCES = {
     276600: ("276/276600_464940", "body_hit", "insanity54"),
     264062: ("264/264062_2971294", "Melee Weapon hit with male moan & body fall", "Paul368"),
     399617: ("399/399617_7386498", "Knife/sword stab #2", "SoundsForHim"),
+    # Panah: parde se guzarna, parindon ka jhund (shikaariyon ka dhyaan bhatakna)
+    656040: ("656/656040_8700431", "Birds flapping OWI", "nayahnaidoo"),
+    872635: ("872/872635_3199189", "bird scare fly away", "supaluci"),
+    560261: ("560/560261_12560866", "Bush Rustle", "RoyalRose"),
 }
 
 
@@ -152,6 +156,10 @@ if __name__ == "__main__":
     oneshot("hit_moan", 264062, 0, 1.6, 0.5)
     for i, t in enumerate([0.4, 5.5, 13.7], 1):
         oneshot(f"stab{i}", 399617, t, 0.5, 0.15)
+
+    # Panah
+    layered("birds_flee", [(872635, 0, 0, 1.0), (656040, 5.1, 0.25, 0.9)], 2.6, 1.2)
+    oneshot("rustle", 560261, 0.6, 1.1, 0.4)
 
     with open(os.path.join(OUT, "CREDITS.md"), "w") as f:
         f.write("# Sound credits\n\nSab recordings [Freesound.org](https://freesound.org) se, "

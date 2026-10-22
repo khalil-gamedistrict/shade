@@ -167,6 +167,7 @@ class WorldPainter extends CustomPainter {
     extra?.call(canvas);
     _hunters(canvas, camX, viewW);
     _player(canvas);
+    _refugeFront(canvas);
     // Shaakhen player ke baad — neeche dabi laash lakdi ke neeche dikhe
     for (var i = 0; i < world.level.branches.length; i++) {
       if (world.branchState[i] == 0) continue; // abhi oopar chhupa hai
@@ -636,6 +637,38 @@ class WorldPainter extends CustomPainter {
     }
   }
 
+  /// Bailon ka parda hero ke saamne (andar chhupa), aur door urte parinde
+  void _refugeFront(Canvas canvas) {
+    final refuge = world.level.refuge;
+    if (refuge.length != 2) return;
+    final roof = refuge[0];
+    final pushers = [world.pos];
+    final probe = world.probeT;
+    if (probe != null) {
+      final (_, dx) = probeVines(probe);
+      // Neze ki nok aagay wale shikaari ke haath se aagay
+      pushers.add(Offset(world.hunters[0].x + dx + 40, world.hunters[0].y));
+    }
+    drawVineCurtain(
+      canvas,
+      roof,
+      refuge[1].bottom,
+      world.time,
+      world.windAt(roof.left),
+      pushers,
+    );
+    if (world.distractTime >= 0) {
+      final s = world.refugeTime - world.distractTime;
+      if (s < 5) {
+        drawBirdFlock(
+          canvas,
+          Offset(world.distractX, _groundAt(world.distractX) - 20),
+          s,
+        );
+      }
+    }
+  }
+
   void _player(Canvas canvas) {
     final dir = world.facingRight ? 1.0 : -1.0;
     if (world.state == PlayerState.won && world.sitting) {
@@ -658,6 +691,7 @@ class WorldPainter extends CustomPainter {
           (0.7, 1.0),
           lean: -0.14,
         ),
+        eyesClosed: world.hiding, // saans roke, aankhen band
       );
       return;
     }
@@ -857,11 +891,16 @@ class WorldPainter extends CustomPainter {
     for (var i = 0; i < world.hunters.length; i++) {
       // Har shikaari apne jism ki jagah: daurta, koodta, ya khara
       final b = world.hunters[i];
-      final x = b.x;
+      var x = b.x;
       if (x < camX - 60 || x > camX + viewW + 60) continue;
+      // Panah pe aagay wala shikaari bailon mein neza ghonpta hai
+      final probe = i == 0 ? world.probeT : null;
+      final probing = probe == null ? null : probeVines(probe);
+      x += probing?.$2 ?? 0;
       drawFigure(
         canvas,
         look: looks[i],
+        pose: probing?.$1,
         foot: Offset(x, b.y),
         dir: b.vx.abs() > 1
             ? b.vx.sign

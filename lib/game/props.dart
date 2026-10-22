@@ -431,15 +431,15 @@ void drawRefuge(
   double wind,
   double rain,
 ) {
-  // Neeche ka saaya (panah ka ehsaas)
-  final shelter = Rect.fromLTRB(roof.left + 6, roof.bottom, wall.left, ground);
+  // Khoh ka andhera: andar jo hai bahar se nazar nahi aata
+  final shelter = Rect.fromLTRB(roof.left + 4, roof.bottom, wall.left, ground);
   canvas.drawRect(
     shelter,
     Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0x55000000), Color(0x22000000)],
+        colors: [Color(0xF5000000), Color(0xE0000000)],
       ).createShader(shelter),
   );
   // Chattan: deewar neeche se, oopar se ubhra hua, aage nukeela chhajja
@@ -527,5 +527,100 @@ void drawRefuge(
         drop,
       );
     }
+  }
+}
+
+/// Chhajje se zameen tak latakta bailon ka parda — khoh ka munh chhupata hai.
+/// [pushers] ke qareeb bailen hat jaati hain (guzarta hero, ghonpa gaya neza).
+void drawVineCurtain(
+  Canvas canvas,
+  Rect roof,
+  double ground,
+  double t,
+  double wind,
+  List<Offset> pushers,
+) {
+  final vine = Paint()
+    ..color = _ink
+    ..strokeWidth = 1.3
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  final leaf = Paint()..color = _ink;
+  const strands = 22;
+  for (var k = 0; k < strands; k++) {
+    // Be-tarteeb faasle aur lambaai — bagh ki jaali nahi, qudrati bailen
+    final x = roof.left - 6 + k * 1.9 + (_hash(k, 51) - 0.5) * 5;
+    final top = Offset(x, roof.bottom - 2 - _hash(k, 54) * 4);
+    final full = ground - top.dy;
+    final len = full * (_hash(k, 52) < 0.25 ? 0.55 + _hash(k, 55) * 0.3 : 1);
+    vine.strokeWidth = 0.8 + _hash(k, 56) * 1.0;
+    // Hawa mein halka jhoolna, aur paas aane wali cheez se door hatna
+    var push = sin(t * 1.1 + k * 0.7) * 1.5 + wind * 3;
+    for (final p in pushers) {
+      final d = x - p.dx;
+      if (d.abs() < 26) push += (d >= 0 ? 1 : -1) * (26 - d.abs()) * 0.9;
+    }
+    final bottom = top + Offset(push, len);
+    final bend = (_hash(k, 57) - 0.5) * 6;
+    final path = Path()
+      ..moveTo(top.dx, top.dy)
+      ..quadraticBezierTo(
+        top.dx + push * 0.2 + bend,
+        top.dy + len * 0.5,
+        bottom.dx,
+        bottom.dy,
+      );
+    canvas.drawPath(path, vine);
+    // Bailon pe chhote patte (sir se chhote), oopar ghane
+    final leaves = 7 + (_hash(k, 58) * 7).floor();
+    for (var j = 0; j < leaves; j++) {
+      final f = pow((j + _hash(k * 13 + j, 53)) / leaves, 1.3).toDouble();
+      final p = Offset(
+        top.dx + push * f * f * 0.8 + (push * 0.2 + bend) * 2 * f * (1 - f),
+        top.dy + len * f,
+      );
+      final side = _hash(k * 13 + j, 59) < 0.5 ? 1.0 : -1.0;
+      final size = 0.8 + _hash(k * 13 + j, 60) * 0.5;
+      canvas.save();
+      canvas.translate(p.dx, p.dy);
+      canvas.rotate(
+        side * (0.7 + _hash(j, k) * 0.7 + sin(t * 2 + k + j) * 0.15),
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(0, 0)
+          ..quadraticBezierTo(2.2 * size, 3 * size, 0, 7 * size)
+          ..quadraticBezierTo(-2.2 * size, 3 * size, 0, 0),
+        leaf,
+      );
+      canvas.restore();
+    }
+  }
+}
+
+/// Jhaariyon se phar-phara kar urte parinde; [s] = urne ke baad ke second
+void drawBirdFlock(Canvas canvas, Offset from, double s) {
+  final wing = Paint()
+    ..color = _ink
+    ..strokeWidth = 1.8
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  for (var i = 0; i < 16; i++) {
+    final delay = _hash(i, 61) * 0.35;
+    final u = s - delay;
+    if (u < 0) continue;
+    final vx = -(25 + _hash(i, 62) * 70);
+    final vy = -(150 + _hash(i, 63) * 90);
+    final start = from + Offset((_hash(i, 64) - 0.5) * 60, -_hash(i, 65) * 20);
+    final p = start + Offset(vx * u, vy * u + 25 * u * u);
+    final flap = sin(u * 26 + i) * 4.5;
+    final w = 6 + _hash(i, 66) * 3;
+    canvas.drawPath(
+      Path()
+        ..moveTo(p.dx - w, p.dy - flap)
+        ..quadraticBezierTo(p.dx - w * 0.4, p.dy - 1, p.dx, p.dy)
+        ..quadraticBezierTo(p.dx + w * 0.4, p.dy - 1, p.dx + w, p.dy - flap),
+      wing,
+    );
   }
 }

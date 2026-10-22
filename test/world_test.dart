@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:io';
 import 'dart:ui';
 
@@ -606,25 +607,78 @@ void main() {
       }
     });
 
-    test('goal pe hero chhajje ke neeche baith jata hai, shikaari dhoond kar laut jaate hain', () {
+    test('goal pe hero khoh mein chhupta hai, parinde ure to shikaari udhar bhaag jaate hain', () {
       final level = chapters.first.level!();
       final w = World(level)
         ..pos = Offset(level.goalX - 30, 400)
         ..chaseActive = true
-        ..hunterX = level.goalX - 400;
+        ..hunterX = level.goalX - 1500;
       final run = Input()..right = true;
       while (w.state != PlayerState.won) {
         w.update(1 / 60, run);
         w.spears.clear();
       }
-      w.update(2.5, Input());
+      final events = <GameEvent>[];
+      void play(double secs) {
+        for (var k = 0; k < secs * 60; k++) {
+          w.update(1 / 60, Input());
+          events.addAll(w.events);
+          w.events.clear();
+        }
+      }
+
+      play(2);
       expect(w.sitting, isTrue);
-      expect(w.pos.dx, closeTo(level.goalX + 70, 1));
-      final nearest = w.hunterX;
-      w.update(4, Input());
-      expect(w.hunterDir, -1); // laut rahe hain
-      expect(w.hunterX, lessThan(nearest - 100));
+      expect(w.pos.dx, closeTo(level.goalX + World.seatOffset, 1));
+      expect(events, contains(GameEvent.rustle)); // parde se guzra
+      expect(w.hiding, isTrue);
+      var probed = false;
+      for (var k = 0; k < 15 * 60 && w.distractTime < 0; k++) {
+        play(1 / 60);
+        probed |= w.probeT != null;
+      }
+      expect(probed, isTrue); // parde mein neza ghonpa
+      expect(w.hunters[0].x, closeTo(level.goalX - 48, 15)); // khoh ke munh pe
+      expect(events, contains(GameEvent.distract));
+      play(5);
+      expect(w.hunterDir, -1); // parindon ke peeche
+      expect(w.hunterX, lessThan(level.goalX - 500));
+      expect(w.hiding, isFalse);
+      expect(w.refugeDone, isTrue);
       expect(w.state, PlayerState.won); // panah mein mehfooz
+    });
+
+    test(
+      'har chapter mein shikaari khoh ke munh tak pahunch kar dhoondte hain',
+      () {
+        for (final c in chapters) {
+          final level = c.level!();
+          final w = World(level)
+            ..pos = Offset(level.goalX + 1, 0)
+            ..chaseActive = true
+            ..hunterX = level.goalX - 900;
+          w.update(1, Input());
+          expect(w.state, PlayerState.won, reason: c.title);
+          var nearest = double.negativeInfinity;
+          for (var k = 0; k < 20 * 60 && w.distractTime < 0; k++) {
+            w.update(1 / 60, Input());
+            nearest = max(nearest, w.hunters[0].x);
+          }
+          expect(nearest, closeTo(level.goalX - 48, 15), reason: c.title);
+        }
+      },
+    );
+
+    test('peechha na ho to hero baith kar manzar khatam', () {
+      final level = chapters[2].level!();
+      final w = World(level)..pos = Offset(level.goalX - 10, 0);
+      for (var k = 0; k < 600 && w.state != PlayerState.won; k++) {
+        w.update(1 / 60, Input()..right = true);
+      }
+      w.chaseActive = false;
+      w.update(3, Input());
+      expect(w.refugeDone, isTrue);
+      expect(w.hiding, isFalse);
     });
   });
 

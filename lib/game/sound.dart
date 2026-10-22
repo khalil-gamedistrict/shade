@@ -29,6 +29,8 @@ class Sound {
     GameEvent.fightStart: (['shout1', 'shout2', 'shout3'], 0.7),
     GameEvent.fightHit: (['land'], 0.85), // waar ki dhamak
     GameEvent.escape: (['jump'], 0.8),
+    GameEvent.rustle: (['rustle'], 0.7),
+    GameEvent.distract: (['birds_flee'], 0.9),
   };
   final _players = <String, AudioPlayer>{};
 
