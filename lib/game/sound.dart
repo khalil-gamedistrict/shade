@@ -16,10 +16,11 @@ class Sound {
     ),
     GameEvent.jump: (['jump'], 0.5),
     GameEvent.land: (['land'], 0.55),
-    GameEvent.death: (['death'], 0.9),
     GameEvent.checkpoint: (['checkpoint'], 0.45),
     GameEvent.win: (['win'], 0.7),
     GameEvent.branchLand: (['land'], 1.0), // shaakh girne ki dhamak
+    GameEvent.branchBreak: (['branch_crack'], 0.9), // oopar shaakh chatakti hai
+    GameEvent.bodyLand: (['land'], 0.7), // takkar se uchhla jism zameen pe
     GameEvent.chaseStart: (['warcry'], 0.8),
     GameEvent.spearThrow: (['spear_throw1', 'spear_throw2'], 0.6),
     GameEvent.spearHit: (['spear_stick'], 0.8),
@@ -30,6 +31,25 @@ class Sound {
     GameEvent.escape: (['jump'], 0.8),
   };
   final _players = <String, AudioPlayer>{};
+
+  // Har maut ki apni awaaz: (file, volume, kitni der baad ms). 'grunt'/'stab' ke kai variant — random.
+  static const _deaths = <DeathKind, List<(String, double, int)>>{
+    DeathKind.fall: [('scream_fall', 0.8, 0)],
+    DeathKind.drown: [('splash', 0.9, 0), ('bubbles', 0.6, 450)],
+    DeathKind.spike: [('stab', 0.8, 0), ('grunt', 0.8, 80)],
+    DeathKind.trap: [('trap_snap', 1.0, 0), ('grunt', 0.85, 120)],
+    DeathKind.pendulum: [('body_hit', 1.0, 0), ('grunt', 0.8, 60)],
+    DeathKind.saw: [('body_hit', 0.8, 0), ('grunt', 0.8, 60)],
+    DeathKind.branch: [('land', 1.0, 0), ('grunt', 0.8, 90)],
+    DeathKind.spear: [
+      ('stab', 0.8, 0),
+      ('spear_stick', 0.6, 0),
+      ('grunt', 0.8, 120),
+    ],
+    DeathKind.caught: [('stab', 0.9, 0), ('hit_moan', 0.8, 150)],
+    DeathKind.burn: [('fire_whoosh', 0.9, 0), ('scream_burn', 0.8, 250)],
+  };
+  static const _variants = {'grunt': 4, 'stab': 3};
   final _last = <GameEvent, int>{};
 
   // Lagataar chalti awaazen: jungle, hawa, baarish, peechhe ka dhol, hero ki saans
@@ -46,6 +66,17 @@ class Sound {
   List<AudioPlayer> get _loops => [_forest, _wind, _rain, _drums, _breath];
 
   Future<void> load() async {
+    for (final list in _deaths.values) {
+      for (final (name, _, _) in list) {
+        for (final f in _files(name)) {
+          if (_players.containsKey(f)) continue;
+          final p = AudioPlayer();
+          await p.setReleaseMode(ReleaseMode.stop);
+          await p.setSource(AssetSource('sounds/$f.ogg'));
+          _players[f] = p;
+        }
+      }
+    }
     for (final (files, _) in _groups.values) {
       for (final f in files) {
         if (_players.containsKey(f)) continue;
@@ -119,6 +150,32 @@ class Sound {
         ..setVolume(near ? 0.9 : 0.6)
         ..resume();
     });
+  }
+
+  static List<String> _files(String name) {
+    final n = _variants[name];
+    return n == null ? [name] : [for (var i = 1; i <= n; i++) '$name$i'];
+  }
+
+  /// Har maut ki qism ki saari files (test ke liye — har ek disk pe honi chahiye)
+  static Map<DeathKind, List<String>> deathFiles() => {
+    for (final MapEntry(:key, :value) in _deaths.entries)
+      key: [for (final (name, _, _) in value) ..._files(name)],
+  };
+
+  /// Maut: us ki qism ke hisaab se awaazon ka mix (kuch thori der se)
+  void playDeath(DeathKind kind) {
+    for (final (name, volume, delay)
+        in _deaths[kind] ?? const <(String, double, int)>[]) {
+      final files = _files(name);
+      final player = _players[files[_r.nextInt(files.length)]];
+      if (player == null) continue;
+      void go() => player
+        ..stop()
+        ..setVolume(volume * (0.9 + _r.nextDouble() * 0.2))
+        ..resume();
+      delay == 0 ? go() : Future.delayed(Duration(milliseconds: delay), go);
+    }
   }
 
   void play(GameEvent e) {

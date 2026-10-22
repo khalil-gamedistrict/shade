@@ -23,3 +23,14 @@ Sab recordings [Freesound.org](https://freesound.org) se, license **CC0 1.0 (pub
 - [swoosh_bamboo_01](https://freesound.org/s/850164/) — Evan_McLoud
 - [Arrow Impact](https://freesound.org/s/205938/) — Twisted_Euphoria
 - [heavy breathing while running](https://freesound.org/s/456037/) — florianreichelt
+- [Splash](https://freesound.org/s/547521/) — colorsCrimsonTears
+- [Bubbles In Water](https://freesound.org/s/529383/) — calebrankin
+- [Wilhelm Scream Alternative 4](https://freesound.org/s/813306/) — qubodup
+- [Medium Male Pain Grunts](https://freesound.org/s/610998/) — unfa
+- [fire-whoosh](https://freesound.org/s/244926/) — hnhnh
+- [Male Screams](https://freesound.org/s/583595/) — Jerome_Walter_Bigoli_Bang
+- [Bear Trap](https://freesound.org/s/278203/) — ThePriest909
+- [Crack of branch 3](https://freesound.org/s/164472/) — deleted_user_2104797
+- [body_hit](https://freesound.org/s/276600/) — insanity54
+- [Melee Weapon hit with male moan & body fall](https://freesound.org/s/264062/) — Paul368
+- [Knife/sword stab #2](https://freesound.org/s/399617/) — SoundsForHim

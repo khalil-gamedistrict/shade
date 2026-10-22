@@ -395,6 +395,7 @@ enum GameEvent {
   win,
   branchBreak, // shaakh toot'ne ki karak
   branchLand,
+  bodyLand, // takkar se uchhla jism zameen pe gira
   chaseStart,
   spearThrow,
   spearHit,
@@ -839,6 +840,7 @@ class World {
       pos = Offset(pos.dx, ground);
       bodyLanded = true;
       landTime = time;
+      events.add(GameEvent.bodyLand);
       bodyVel = Offset(bodyVel.dx * 0.6, 0);
     } else if (bodyLanded && pos.dy < ground - 1) {
       bodyLanded = false; // kinare se gir gaya

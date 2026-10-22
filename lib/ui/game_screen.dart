@@ -88,7 +88,8 @@ class _GameScreenState extends State<GameScreen>
       running: world.vx != 0,
     );
     for (final e in world.events) {
-      sound?.play(e);
+      // Maut ki awaaz us ki qism ke hisaab se (aag, neza, paani...)
+      e == GameEvent.death ? sound?.playDeath(world.deathKind) : sound?.play(e);
     }
     world.events.clear();
     frame.value++;

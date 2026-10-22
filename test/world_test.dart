@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shade/game/autopilot.dart';
 import 'package:shade/game/chapters.dart';
 import 'package:shade/game/levels.dart';
+import 'package:shade/game/sound.dart';
 import 'package:shade/game/weather.dart';
 import 'package:shade/game/world.dart';
 import 'package:shade/main.dart';
@@ -695,6 +697,20 @@ void main() {
       }
       expect(w.hunters.first.x, lessThan(800)); // chattan ke neeche ruke
     });
+  });
+
+  test('har maut ki qism ki apni awaaz hai, aur har file maujood hai', () {
+    final files = Sound.deathFiles();
+    for (final kind in DeathKind.values) {
+      expect(files[kind], isNotEmpty, reason: kind.name);
+      for (final f in files[kind]!) {
+        expect(
+          File('assets/sounds/$f.ogg').existsSync(),
+          isTrue,
+          reason: '$f.ogg (${kind.name})',
+        );
+      }
+    }
   });
 }
 

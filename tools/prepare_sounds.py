@@ -39,6 +39,18 @@ SOURCES = {
     850164: ("850/850164_3552348", "swoosh_bamboo_01", "Evan_McLoud"),
     205938: ("205/205938_3842302", "Arrow Impact", "Twisted_Euphoria"),
     456037: ("456/456037_6253486", "heavy breathing while running", "florianreichelt"),
+    # Maut ki awaazen (har maut ki apni)
+    547521: ("547/547521_11785387", "Splash", "colorsCrimsonTears"),
+    529383: ("529/529383_5072671", "Bubbles In Water", "calebrankin"),
+    813306: ("813/813306_71257", "Wilhelm Scream Alternative 4", "qubodup"),
+    610998: ("610/610998_1038806", "Medium Male Pain Grunts", "unfa"),
+    244926: ("244/244926_3983630", "fire-whoosh", "hnhnh"),
+    583595: ("583/583595_4679127", "Male Screams", "Jerome_Walter_Bigoli_Bang"),
+    278203: ("278/278203_1499685", "Bear Trap", "ThePriest909"),
+    164472: ("164/164472_2104797", "Crack of branch 3", "deleted_user_2104797"),
+    276600: ("276/276600_464940", "body_hit", "insanity54"),
+    264062: ("264/264062_2971294", "Melee Weapon hit with male moan & body fall", "Paul368"),
+    399617: ("399/399617_7386498", "Knife/sword stab #2", "SoundsForHim"),
 }
 
 
@@ -125,6 +137,21 @@ if __name__ == "__main__":
     oneshot("spear_stick", 205938, 0, 0.6, 0.25)
     loop("drums", 575447, 6, 36)
     loop("breath", 456037, 2, 36)
+
+    # Maut: har qism ki apni awaaz
+    oneshot("splash", 547521, 0, 2.8, 1.2)
+    oneshot("bubbles", 529383, 2.4, 1.3, 0.5)
+    oneshot("scream_fall", 813306, 0, 1.5, 0.6)
+    for i, t in enumerate([12.7, 16.1, 19.1, 21.7], 1):
+        oneshot(f"grunt{i}", 610998, t, 0.6, 0.2)
+    oneshot("fire_whoosh", 244926, 0, 2.5, 1.0)
+    oneshot("scream_burn", 583595, 19.4, 1.1, 0.4)
+    oneshot("trap_snap", 278203, 0, 0.5, 0.15)
+    oneshot("branch_crack", 164472, 0, 0.63, 0.2)
+    oneshot("body_hit", 276600, 0, 0.84, 0.25)
+    oneshot("hit_moan", 264062, 0, 1.6, 0.5)
+    for i, t in enumerate([0.4, 5.5, 13.7], 1):
+        oneshot(f"stab{i}", 399617, t, 0.5, 0.15)
 
     with open(os.path.join(OUT, "CREDITS.md"), "w") as f:
         f.write("# Sound credits\n\nSab recordings [Freesound.org](https://freesound.org) se, "
