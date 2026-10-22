@@ -208,7 +208,9 @@ class WorldPainter extends CustomPainter {
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
             colors: [
-              Colors.white.withValues(alpha: 0.3 * flicker),
+              const Color(0xFFFF9A4A).withValues(
+                alpha: 0.28 * flicker,
+              ), // neeche se aag ki garam roshni
               Colors.black.withValues(alpha: 0.35),
             ],
           ).createShader(rect),

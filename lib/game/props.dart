@@ -1,6 +1,7 @@
 // Chapters ki khaas cheezen: aag, jalti jhonpriyan, darya, tairte lakkar, rassi ka pul.
-// Limbo jaisa: sab kaala silhouette; aag aur roshni safed chamak ki tarah.
+// Limbo jaisa: sab kaala silhouette — sirf aag asli rang mein (narangi), taake andhere mein chamke.
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -12,78 +13,162 @@ double _hash(int i, int salt) {
   return h - h.floorToDouble();
 }
 
-/// Aag: thartharate sholay, gird roshni, oopar urti chingariyan. [r] = khatre wala hissa (zameen pe)
-void drawFire(Canvas canvas, Rect r, double t, {double size = 1}) {
-  final c = Offset(r.center.dx, r.bottom);
-  final flicker = 0.8 + 0.2 * sin(t * 13) * sin(t * 7.3 + 1);
-  // Gird ki roshni
+// ---- Aag: asli aag ki tarah sainkron chamakti lapten (particles), jama ho kar chamakti hain
+
+/// Ek naram, lambi (aansoo jaisi) chamakti lapat — sab lapten isi tasveer se banti hain (ek dafa banti hai)
+ui.Image? _spark;
+ui.Image get _sparkImage => _spark ??= () {
+  final rec = ui.PictureRecorder();
+  Canvas(rec)
+    ..scale(1, 2) // 32x64: oopar neeche lambi
+    ..drawCircle(
+      const Offset(16, 16),
+      16,
+      Paint()
+        ..shader =
+            const RadialGradient(
+              colors: [Color(0xFFFFFFFF), Color(0x88FFFFFF), Color(0x00FFFFFF)],
+              stops: [0, 0.4, 1],
+            ).createShader(
+              Rect.fromCircle(center: const Offset(16, 16), radius: 16),
+            ),
+    );
+  return rec.endRecording().toImageSync(32, 64);
+}();
+
+// Lapat ka rang umar ke saath: safed-peela (neeche, sab se garam) → narangi → gehra laal → ghayab
+const _flameStops = [
+  (0.0, Color(0xFFFFF6DC)),
+  (0.18, Color(0xFFFFD27A)),
+  (0.45, Color(0xFFFF9636)),
+  (0.75, Color(0xFFD9441C)),
+  (1.0, Color(0xFF6E1A0A)),
+];
+
+Color _flameColor(double u, double alpha) {
+  for (var k = 1; k < _flameStops.length; k++) {
+    final (u1, c1) = _flameStops[k];
+    if (u <= u1) {
+      final (u0, c0) = _flameStops[k - 1];
+      return Color.lerp(c0, c1, (u - u0) / (u1 - u0))!.withValues(alpha: alpha);
+    }
+  }
+  return _flameStops.last.$2.withValues(alpha: alpha);
+}
+
+/// Aag: [r] = khatre wala hissa (zameen pe). Lapten neeche se uthti hain, oopar jaate hue beech ki taraf
+/// simat kar patli hoti hain, hawa mein lehrati hain; gird garam roshni aur urti chingariyan.
+void drawFire(
+  Canvas canvas,
+  Rect r,
+  double t, {
+  double size = 1,
+  double wind = 0,
+}) {
+  final base = Offset(r.center.dx, r.bottom);
+  final flicker = 0.85 + 0.15 * sin(t * 13) * sin(t * 7.3 + 1);
+
+  // Zameen aur aas paas pe garam roshni
+  final glowR = (60 + r.width * 0.8) * size;
   canvas.drawCircle(
-    c + Offset(0, -12 * size),
-    70 * size,
+    base + Offset(0, -10 * size),
+    glowR,
     Paint()
+      ..blendMode = BlendMode.plus
       ..shader =
           RadialGradient(
             colors: [
-              Colors.white.withValues(alpha: 0.42 * flicker),
-              Colors.white.withValues(alpha: 0),
+              const Color(0xFFFF8C32).withValues(alpha: 0.32 * flicker),
+              const Color(0x00FF8C32),
             ],
           ).createShader(
             Rect.fromCircle(
-              center: c + Offset(0, -12 * size),
-              radius: 70 * size,
+              center: base + Offset(0, -10 * size),
+              radius: glowR,
             ),
           ),
   );
-  // Sholay: neeche chaure, oopar nukeele, har ek apni taal pe lehrata
-  final tongues = max(3, (r.width / 9).round());
-  final flame = Path();
-  for (var i = 0; i < tongues; i++) {
-    final x = r.left + (i + 0.5) * r.width / tongues;
-    final h =
-        (18 + _hash(i, 1) * 16) *
-        size *
-        (0.75 + 0.25 * sin(t * (9 + i) + i * 2));
-    final lean = sin(t * 6 + i * 1.7) * 4 * size;
-    final w = r.width / tongues * 0.8;
-    flame
-      ..moveTo(x - w, r.bottom)
-      ..quadraticBezierTo(
-        x - w * 0.6 + lean * 0.3,
-        r.bottom - h * 0.6,
-        x + lean,
-        r.bottom - h,
-      )
-      ..quadraticBezierTo(
-        x + w * 0.6 + lean * 0.3,
-        r.bottom - h * 0.6,
-        x + w,
-        r.bottom,
-      )
-      ..close();
-  }
-  canvas.drawPath(flame, Paint()..color = const Color(0xFFDDDDDA));
-  // Andar ka zyada chamakta hissa
-  canvas.drawPath(
-    flame.transform(
-      (Matrix4.identity()
-            ..translateByDouble(c.dx, c.dy, 0, 1)
-            ..scaleByDouble(0.6, 0.55, 1, 1)
-            ..translateByDouble(-c.dx, -c.dy, 0, 1))
-          .storage,
-    ),
-    Paint()..color = Colors.white,
-  );
-  // Chingariyan
-  final ember = Paint()..color = Colors.white;
-  for (var i = 0; i < 8; i++) {
-    final life = (t * (0.45 + _hash(i, 2) * 0.3) + _hash(i, 3)) % 1;
-    final p = Offset(
-      r.left + _hash(i, 4) * r.width + sin(t * 3 + i) * 8 * life,
-      r.bottom - 10 - life * 110 * size,
+
+  final img = _sparkImage;
+  final half = r.width / 2;
+  final n = (r.width * 2.2).clamp(44, 150).round();
+  final transforms = <RSTransform>[], rects = <Rect>[], colors = <Color>[];
+  const src = Rect.fromLTWH(0, 0, 32, 64);
+  for (var i = 0; i < n; i++) {
+    final h1 = _hash(i, 21),
+        h2 = _hash(i, 22),
+        h3 = _hash(i, 23),
+        h4 = _hash(i, 24);
+    final wisp =
+        i % 4 ==
+        0; // kuch lambi patli lapten jo saanp ki tarah lehrati oopar jaati hain
+    final u =
+        (t * (wisp ? 0.8 + h1 * 0.4 : 1.1 + h1 * 0.7) + h2) % 1; // umar 0..1
+    final x0 = r.left + (0.15 + h3 * 0.7) * r.width;
+    final centered = pow(
+      1 - ((x0 - base.dx).abs() / max(1, half)) * 0.6,
+      1.5,
+    ); // beech ki lapten oonchi
+    final height = (46 + h4 * 44) * size * centered * (wisp ? 1.6 : 1);
+    final swayAmp = (wisp ? 7.0 : 3.5) * size;
+    // Oopar jaate hue beech ki taraf simatna + lehrana + hawa
+    final x =
+        x0 +
+        (base.dx - x0) * u * 0.75 +
+        sin(t * 7 + i * 1.7 + u * 4) * swayAmp * u +
+        wind * u * 18 * size;
+    final y = base.dy - 3 - u * height;
+    final radius =
+        pow(1 - u, 0.9) * (wisp ? 3.5 + h1 * 2.5 : 4.5 + h1 * 4) * size;
+    final alpha = pow(1 - u, 1.1) * (wisp ? 0.45 : 0.34) * flicker;
+    transforms.add(
+      RSTransform.fromComponents(
+        rotation:
+            (cos(t * 7 + i * 1.7 + u * 4) * 0.35 + wind * 0.4) *
+            u, // lapat lehar ke saath jhukti
+        scale: radius / 16,
+        anchorX: 16,
+        anchorY: 40,
+        translateX: x,
+        translateY: y,
+      ),
     );
-    ember.color = Colors.white.withValues(alpha: (1 - life) * 0.9);
-    canvas.drawCircle(p, 1.3 * (1 - life * 0.5), ember);
+    rects.add(src);
+    colors.add(_flameColor(u, alpha.toDouble()));
   }
+  // Chingariyan: chhoti, tez, oopar door tak, tedhi meedhi
+  for (var i = 0; i < 12; i++) {
+    final life = (t * (0.35 + _hash(i, 2) * 0.3) + _hash(i, 3)) % 1;
+    final x =
+        r.left +
+        _hash(i, 4) * r.width +
+        sin(t * 4 + i * 2.1) * 10 * life +
+        wind * life * 40;
+    final y = r.bottom - 12 - life * (90 + _hash(i, 5) * 60) * size;
+    transforms.add(
+      RSTransform.fromComponents(
+        rotation: 0,
+        scale: (1.6 * (1 - life * 0.6)) / 32 * size,
+        anchorX: 32,
+        anchorY: 32,
+        translateX: x,
+        translateY: y,
+      ),
+    );
+    rects.add(src);
+    final twinkle = 0.6 + 0.4 * sin(t * 25 + i * 3);
+    colors.add(const Color(0xFFFFB24D).withValues(alpha: (1 - life) * twinkle));
+  }
+  // Sab lapten ek saath, jama hoti roshni (additive) — andar ka hissa khud safed-peela chamakta hai
+  canvas.drawAtlas(
+    img,
+    transforms,
+    rects,
+    colors,
+    BlendMode.modulate,
+    null,
+    Paint()..blendMode = BlendMode.plus,
+  );
 }
 
 /// Jalti jhonpri: deewarein, phoos ki chhat (tooti hui), chhat pe aag, oopar uthta dhuaan
