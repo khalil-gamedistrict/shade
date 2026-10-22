@@ -82,10 +82,23 @@ class _GameScreenState extends State<GameScreen>
     }
     if (input.left || input.right || input.jump) sound?.startLoops();
     sound?.setWeather(wind: world.windAt(world.pos.dx), rain: weather.rain);
+    // Sab se qareeb shikaari, aur koi daur raha hai? (panah pe bhi — oopar se guzarte qadam)
+    var gap = double.infinity;
+    var huntersRunning = false;
+    if (world.chaseActive) {
+      for (final b in world.hunters) {
+        final d = world.pos.dx - b.x;
+        if (d.abs() < gap.abs()) gap = d;
+        huntersRunning |= b.grounded && b.vx.abs() > 1;
+      }
+    }
     sound?.setChase(
       active: world.chaseActive && world.state == PlayerState.alive,
-      closeness: 1 - (world.pos.dx - world.hunterX) / 470,
       running: world.vx != 0,
+      hunterGap: gap,
+      huntersRunning:
+          huntersRunning &&
+          (world.state == PlayerState.alive || world.state == PlayerState.won),
     );
     for (final e in world.events) {
       // Maut ki awaaz us ki qism ke hisaab se (aag, neza, paani...)

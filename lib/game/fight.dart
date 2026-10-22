@@ -206,31 +206,37 @@ final _lead = <_Key>[
   (3.4, _thrust, 2),
 ];
 
-/// Doosra shikaari (dhaal): qareeb aata hai, oopar se waar karta hai (hero rokta hai), phir saath deta hai
+/// Doosra shikaari (dhaal): pehle hero ke peeche se ghoom kar us ki doosri taraf aata hai — akele aadmi ko
+/// ghere mein lete hain — phir wahan se (hero ki peeth ki taraf se) waar karta hai. dx hero se, + = daayen.
+const _circleEnd = 0.85;
 final _second = <_Key>[
-  (0.0, const FigurePose((0.1, 0), (-0.1, 0), (0.3, 0.3), (-0.1, 0.2)), -70),
-  (0.8, const FigurePose((0.3, -0.2), (-0.3, 0), (0.8, 0.6), (0.3, 0.5)), -60),
-  (1.08, _cock, -60),
-  (1.25, _thrust, -50),
-  (1.8, const FigurePose((0.2, -0.2), (-0.2, 0), (1.0, 0.7), (0.4, 0.5)), -58),
-  (2.6, _cock, -60),
-  (2.8, _thrust, -50),
-  (3.4, const FigurePose((0.2, -0.2), (-0.2, 0), (1.0, 0.7), (0.4, 0.5)), -54),
+  (
+    _circleEnd,
+    const FigurePose((0.3, -0.2), (-0.3, 0), (0.8, 0.6), (0.3, 0.5)),
+    64,
+  ),
+  (1.08, _cock, 66),
+  (1.25, _thrust, 52),
+  (1.8, const FigurePose((0.2, -0.2), (-0.2, 0), (1.0, 0.7), (0.4, 0.5)), 60),
+  (2.6, _cock, 64),
+  (2.8, _thrust, 50),
+  (3.4, const FigurePose((0.2, -0.2), (-0.2, 0), (1.0, 0.7), (0.4, 0.5)), 56),
 ];
 
-// Khoh ke munh pe: shikaari bailon ke parde mein neza ghonp kar dekhta hai (World.probeLength)
-final _probe = <_Key>[
-  (0.0, _guard, 0),
-  (0.3, _cock, -4),
-  (0.45, _thrust, 10),
-  (0.75, _thrust, 12),
-  (1.0, _guard, 0),
-];
-
-(FigurePose, double) probeVines(double t) => _at(_probe, t);
 (FigurePose, double) heroFight(double t) => _at(_hero, t);
 (FigurePose, double) leadFight(double t) => _at(_lead, t);
-(FigurePose, double) secondFight(double t) => _at(_second, t);
+
+/// Doosre shikaari ka (pose, dx, abhi ghoom raha hai?). Ghoomte waqt pose null — woh chal raha hota hai,
+/// hero ke peeche (door) se baayen se daayen.
+(FigurePose?, double, bool) secondFight(double t) {
+  if (t < _circleEnd) {
+    var k = t / _circleEnd;
+    k = k * k * (3 - 2 * k);
+    return (null, lerpDouble(-70, 64, k)!, true);
+  }
+  final (pose, dx) = _at(_second, t);
+  return (pose, dx, false);
+}
 
 /// Chhootne pe hero ka dhakka (pehle 0.35 second)
 const escapeShove = FigurePose(

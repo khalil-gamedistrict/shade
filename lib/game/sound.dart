@@ -25,12 +25,17 @@ class Sound {
     GameEvent.spearThrow: (['spear_throw1', 'spear_throw2'], 0.6),
     GameEvent.spearHit: (['spear_stick'], 0.8),
     GameEvent.spearStick: (['spear_stick'], 0.3),
-    GameEvent.shout: (['shout1', 'shout2', 'shout3'], 0.45),
-    GameEvent.fightStart: (['shout1', 'shout2', 'shout3'], 0.7),
+    GameEvent.shout: (
+      ['shout1', 'shout2', 'shout3', 'shout4', 'shout5', 'shout6'],
+      0.5,
+    ),
+    GameEvent.fightStart: (
+      ['shout1', 'shout2', 'shout3', 'shout4', 'shout5', 'shout6'],
+      0.7,
+    ),
     GameEvent.fightHit: (['land'], 0.85), // waar ki dhamak
     GameEvent.escape: (['jump'], 0.8),
     GameEvent.rustle: (['rustle'], 0.7),
-    GameEvent.distract: (['birds_flee'], 0.9),
   };
   final _players = <String, AudioPlayer>{};
 
@@ -60,12 +65,21 @@ class Sound {
   final _rain = AudioPlayer();
   final _drums = AudioPlayer();
   final _breath = AudioPlayer();
+  final _hunters = AudioPlayer(); // peeche daurte shikaariyon ke qadam
+  double _pan = 0;
   final _thunderNear = AudioPlayer();
   final _thunderFar = AudioPlayer();
   bool _loopsStarted = false;
   final _vol = <AudioPlayer, double>{};
 
-  List<AudioPlayer> get _loops => [_forest, _wind, _rain, _drums, _breath];
+  List<AudioPlayer> get _loops => [
+    _forest,
+    _wind,
+    _rain,
+    _drums,
+    _breath,
+    _hunters,
+  ];
 
   Future<void> load() async {
     for (final list in _deaths.values) {
@@ -94,6 +108,7 @@ class Sound {
       (_rain, 'rain'),
       (_drums, 'drums'),
       (_breath, 'breath'),
+      (_hunters, 'hunters_run'),
     ]) {
       await p.setReleaseMode(ReleaseMode.loop);
       await p.setSource(AssetSource('sounds/$name.ogg'));
@@ -122,21 +137,40 @@ class Sound {
     _fade(_rain, 0.8 * rain);
   }
 
-  /// Peechha: shikaari jitne qareeb, dhol utna tez; daurte hue hero ki saans
+  /// Peechha: shikaari jitne qareeb, dhol utna tez; daurte hue hero ki saans.
+  /// [hunterGap] = hero se sab se qareeb shikaari ka faasla (+ = shikaari baayen). Un ke qadmon ki awaaz
+  /// faasle ke saath — door halki, qareeb aate aate tez — aur jidhar woh hain usi kaan mein zyada.
   void setChase({
     required bool active,
-    required double closeness,
     required bool running,
+    required double hunterGap,
+    required bool huntersRunning,
   }) {
     if (!_loopsStarted) return;
-    _fade(_drums, active ? 0.2 + 0.5 * closeness.clamp(0, 1) : 0);
+    _near = _nearness(hunterGap);
+    _fade(_drums, active ? 0.15 + 0.5 * _near : 0);
     _fade(_breath, active && running ? 0.6 : 0);
+    _fade(
+      _hunters,
+      huntersRunning ? 0.05 + 0.95 * _near * _near : 0,
+      speed: 0.15,
+    );
+    final pan = (-hunterGap / 600).clamp(-0.7, 0.7);
+    if ((pan - _pan).abs() > 0.03) {
+      _pan = pan;
+      _hunters.setBalance(pan);
+    }
   }
 
+  double _near = 0;
+
+  /// 1 = bilkul saath, 0 = 800px ya zyada door
+  static double _nearness(double gap) => (1 - gap.abs() / 800).clamp(0.0, 1.0);
+
   // Volume aahista badlo, aur sirf tab bhejo jab farq mehsoos ho (har frame bhejna mehnga hai)
-  void _fade(AudioPlayer p, double target) {
+  void _fade(AudioPlayer p, double target, {double speed = 0.08}) {
     final cur = _vol[p] ?? 0;
-    final next = cur + (target - cur) * 0.08;
+    final next = cur + (target - cur) * speed;
     if ((next - cur).abs() < 0.004) return;
     _vol[p] = next;
     p.setVolume(next);
@@ -180,6 +214,13 @@ class Sound {
     }
   }
 
+  // Shikaariyon ki awaazen: door hon to halki
+  static const _voices = {
+    GameEvent.chaseStart,
+    GameEvent.shout,
+    GameEvent.fightStart,
+  };
+
   void play(GameEvent e) {
     final group = _groups[e];
     if (group == null) return;
@@ -192,7 +233,11 @@ class Sound {
     if (player == null) return;
     player
       ..stop()
-      ..setVolume(volume * (0.85 + _r.nextDouble() * 0.3))
+      ..setVolume(
+        volume *
+            (0.85 + _r.nextDouble() * 0.3) *
+            (_voices.contains(e) ? 0.3 + 0.7 * _near : 1),
+      )
       ..resume();
   }
 

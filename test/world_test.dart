@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:io';
 import 'dart:ui';
 
@@ -563,6 +562,31 @@ void main() {
       return w;
     }
 
+    test('hawa mein (kood ke beech) larai shuru nahi hoti — zameen pe hi', () {
+      final w = World(chaseLevel());
+      var inAir = false;
+      final jump = Input()..jump = true;
+      for (var k = 0; k < 2000 && w.state == PlayerState.alive; k++) {
+        w.update(1 / 60, jump);
+        w.spears.clear();
+        inAir = !w.grounded;
+      }
+      expect(w.state, PlayerState.fighting);
+      expect(inAir, isFalse);
+    });
+
+    test('marne ke baad koodta shikaari hawa mein jam nahi jata', () {
+      final w = caught();
+      w.update(World.fightDuration + 0.1, Input());
+      expect(w.state, PlayerState.dead);
+      w.hunters[2]
+        ..y = 300
+        ..vy = -200
+        ..grounded = false;
+      w.update(1.5, Input());
+      expect(w.hunters[2].grounded, isTrue);
+    });
+
     test('pakre jaane pe pehle larai hoti hai, phir maut', () {
       final w = caught();
       expect(w.state, PlayerState.fighting);
@@ -601,14 +625,29 @@ void main() {
   });
 
   group('panah', () {
-    test('har chapter ke aakhir mein panah (chattan ka chhajja) hai', () {
-      for (final c in chapters) {
-        expect(c.level!().refuge.length, 2, reason: c.title);
-      }
-    });
+    test(
+      'har chapter ke aakhir mein zameen ke neeche chhupne ka gaddha hai',
+      () {
+        for (final c in chapters) {
+          final level = c.level!();
+          expect(level.hideout, isNotNull, reason: c.title);
+          // Goal ke baad itni zameen ke shikaari aagay daur kar nazar se ojhal ho jayen
+          final world = World(level);
+          expect(
+            world.solidsNow().any(
+              (s) =>
+                  s.left <= level.goalX + 1500 && s.right >= level.goalX + 1500,
+            ),
+            isTrue,
+            reason: c.title,
+          );
+        }
+      },
+    );
 
-    test('goal pe hero khoh mein chhupta hai, parinde ure to shikaari udhar bhaag jaate hain', () {
+    test('hero gaddhay mein girta hai, shikaari oopar ruk kar aagay bhaag jaate hain', () {
       final level = chapters.first.level!();
+      final hole = level.hideout!;
       final w = World(level)
         ..pos = Offset(level.goalX - 30, 400)
         ..chaseActive = true
@@ -627,49 +666,55 @@ void main() {
         }
       }
 
-      play(2);
+      play(2.5);
       expect(w.sitting, isTrue);
-      expect(w.pos.dx, closeTo(level.goalX + World.seatOffset, 1));
-      expect(events, contains(GameEvent.rustle)); // parde se guzra
+      expect(w.underground, isTrue);
+      expect(w.pos.dy, closeTo(hole.bottom, 1)); // zameen ke neeche
+      expect(w.pos.dx, closeTo(level.goalX + World.seatX, 1));
+      expect(events, contains(GameEvent.rustle)); // patton mein se gira
       expect(w.hiding, isTrue);
-      var probed = false;
-      for (var k = 0; k < 15 * 60 && w.distractTime < 0; k++) {
+      // Shikaari aa kar theek oopar rukte hain (zameen pe, gaddhay mein nahi)
+      var above = false;
+      for (var k = 0; k < 15 * 60 && w.passedTime < 0; k++) {
         play(1 / 60);
-        probed |= w.probeT != null;
+        final lead = w.hunters.first;
+        above |=
+            lead.x > hole.left &&
+            lead.x < hole.right &&
+            (lead.y - 400).abs() < 1;
       }
-      expect(probed, isTrue); // parde mein neza ghonpa
-      expect(w.hunters[0].x, closeTo(level.goalX - 48, 15)); // khoh ke munh pe
-      expect(events, contains(GameEvent.distract));
+      expect(above, isTrue);
       play(5);
-      expect(w.hunterDir, -1); // parindon ke peeche
-      expect(w.hunterX, lessThan(level.goalX - 500));
+      // Hero ke oopar se guzar kar aagay (daayen) nikal gaye
+      for (final b in w.hunters) {
+        expect(b.x, greaterThan(hole.right + 300));
+        expect(b.y, closeTo(400, 1));
+      }
       expect(w.hiding, isFalse);
       expect(w.refugeDone, isTrue);
-      expect(w.state, PlayerState.won); // panah mein mehfooz
+      expect(w.state, PlayerState.won); // gaddhay mein mehfooz
     });
 
-    test(
-      'har chapter mein shikaari khoh ke munh tak pahunch kar dhoondte hain',
-      () {
-        for (final c in chapters) {
-          final level = c.level!();
-          final w = World(level)
-            ..pos = Offset(level.goalX + 1, 0)
-            ..chaseActive = true
-            ..hunterX = level.goalX - 900;
-          w.update(1, Input());
-          expect(w.state, PlayerState.won, reason: c.title);
-          var nearest = double.negativeInfinity;
-          for (var k = 0; k < 20 * 60 && w.distractTime < 0; k++) {
-            w.update(1 / 60, Input());
-            nearest = max(nearest, w.hunters[0].x);
-          }
-          expect(nearest, closeTo(level.goalX - 48, 15), reason: c.title);
+    test('har chapter mein shikaari gaddhay ke oopar se guzar jaate hain', () {
+      for (final c in chapters) {
+        final level = c.level!();
+        final hole = level.hideout!;
+        final w = World(level)
+          ..pos = Offset(level.goalX + 1, 0)
+          ..chaseActive = true
+          ..hunterX = level.goalX - 900;
+        w.update(1, Input());
+        expect(w.state, PlayerState.won, reason: c.title);
+        for (var k = 0; k < 25 * 60 && !w.refugeDone; k++) {
+          w.update(1 / 60, Input());
         }
-      },
-    );
+        w.update(2, Input());
+        expect(w.refugeDone, isTrue, reason: c.title);
+        expect(w.hunters.last.x, greaterThan(hole.right), reason: c.title);
+      }
+    });
 
-    test('peechha na ho to hero baith kar manzar khatam', () {
+    test('peechha na ho to hero gaddhay mein baith kar manzar khatam', () {
       final level = chapters[2].level!();
       final w = World(level)..pos = Offset(level.goalX - 10, 0);
       for (var k = 0; k < 600 && w.state != PlayerState.won; k++) {
@@ -679,6 +724,7 @@ void main() {
       w.update(3, Input());
       expect(w.refugeDone, isTrue);
       expect(w.hiding, isFalse);
+      expect(w.underground, isTrue);
     });
   });
 

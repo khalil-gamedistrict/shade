@@ -493,7 +493,7 @@ class Jungle {
     // Qareeb ke darakht: tukron mein — shaakhen aur un ke patte apne jor pe jhoolte hue
     final res = _res(scale, 1);
     for (final (i, x) in near.visible(camX - 260, camX + viewW + 260)) {
-      final ground = level.solids.where(
+      final ground = level.ground.where(
         (s) => x > s.left + 10 && x < s.right - 10 && s.top >= 340,
       );
       if (ground.isEmpty) continue;
@@ -510,7 +510,7 @@ class Jungle {
 
     // Zameen pe fern, jhaariyan, bare patte — spikes ke paas nahi (taake khatra saaf dikhe)
     final pres = _res(scale, 1);
-    for (final s in level.solids) {
+    for (final s in level.ground) {
       if (s.right < camX - 80 ||
           s.left > camX + viewW + 80 ||
           s.width < 60 ||

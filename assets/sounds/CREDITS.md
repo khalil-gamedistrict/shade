@@ -17,8 +17,13 @@ Sab recordings [Freesound.org](https://freesound.org) se, license **CC0 1.0 (pub
 - [Closeup Thunder Strike 01](https://freesound.org/s/840628/) — loganzsound
 - [Long Rumbling Thunder](https://freesound.org/s/151447/) — billgrip
 - [Tribal Jungle Drum beat](https://freesound.org/s/575447/) — szegvari
-- [Male Yelling out a War Cry 3](https://freesound.org/s/621352/) — WelvynZPorterSamples
-- [39-gritos hombre](https://freesound.org/s/429336/) — Tomycatts
+- [R15-69-Native Americans and Horses](https://freesound.org/s/479551/) — craigsmith
+- [Guys Howling Fun](https://freesound.org/s/401693/) — valdrag
+- [Central American Indian Salute](https://freesound.org/s/190548/) — danielsilveira321
+- [crazy indian scream](https://freesound.org/s/219860/) — polmdx
+- [R27-46-Many Run By on Dirty Floor](https://freesound.org/s/480677/) — craigsmith
+- [Panicked Running Footsteps on Grass](https://freesound.org/s/635052/) — sillygrizzlies
+- [Running on dry leaves](https://freesound.org/s/716949/) — AudioPapkin
 - [swoosh_bamboo_03](https://freesound.org/s/850166/) — Evan_McLoud
 - [swoosh_bamboo_01](https://freesound.org/s/850164/) — Evan_McLoud
 - [Arrow Impact](https://freesound.org/s/205938/) — Twisted_Euphoria
@@ -34,6 +39,4 @@ Sab recordings [Freesound.org](https://freesound.org) se, license **CC0 1.0 (pub
 - [body_hit](https://freesound.org/s/276600/) — insanity54
 - [Melee Weapon hit with male moan & body fall](https://freesound.org/s/264062/) — Paul368
 - [Knife/sword stab #2](https://freesound.org/s/399617/) — SoundsForHim
-- [Birds flapping OWI](https://freesound.org/s/656040/) — nayahnaidoo
-- [bird scare fly away](https://freesound.org/s/872635/) — supaluci
 - [Bush Rustle](https://freesound.org/s/560261/) — RoyalRose

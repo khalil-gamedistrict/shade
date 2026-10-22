@@ -79,7 +79,7 @@ class WorldPainter extends CustomPainter {
       }
     }
     final grass = Path();
-    for (final s in world.level.solids) {
+    for (final s in world.level.ground) {
       if (s.right < camX - 40 || s.left > camX + viewW + 40) continue;
       if (s.height < 10) {
         drawBridge(canvas, s, t, world.windAt(s.center.dx)); // rassi ka pul
@@ -97,31 +97,11 @@ class WorldPainter extends CustomPainter {
         t,
       );
     }
-    final refuge = level.refuge;
-    if (refuge.length == 2 &&
-        refuge[1].right > camX - 60 &&
-        refuge[0].left < camX + viewW + 60) {
-      drawRefuge(
-        canvas,
-        refuge[0],
-        refuge[1],
-        refuge[1].bottom,
-        t,
-        world.windAt(refuge[0].center.dx),
-        weather.rain,
-      );
-      final top = Path();
-      Grass.addTo(
-        top,
-        refuge[0].top - 3,
-        refuge[0].left + 20,
-        refuge[1].right - 6,
-        camX - 40,
-        camX + viewW + 40,
-        world.windAt,
-        t,
-      );
-      canvas.drawPath(top, _black);
+    final hole = level.hideout;
+    if (hole != null &&
+        hole.right > camX - 60 &&
+        hole.left < camX + viewW + 60) {
+      drawHideoutBack(canvas, hole, _groundAt(hole.center.dx), t);
     }
     canvas.drawPath(grass, _black);
     for (final s in world.level.spikes) {
@@ -161,13 +141,13 @@ class WorldPainter extends CustomPainter {
       );
     }
     // Panah ho to wahi manzil ki nishani; warna purani roshni
-    if (world.level.refuge.isEmpty) {
+    if (world.level.hideout == null) {
       _goalLight(canvas);
     }
     extra?.call(canvas);
     _hunters(canvas, camX, viewW);
     _player(canvas);
-    _refugeFront(canvas);
+    _hideoutFront(canvas);
     // Shaakhen player ke baad — neeche dabi laash lakdi ke neeche dikhe
     for (var i = 0; i < world.level.branches.length; i++) {
       if (world.branchState[i] == 0) continue; // abhi oopar chhupa hai
@@ -195,10 +175,15 @@ class WorldPainter extends CustomPainter {
     _fogAndVignette(canvas, size);
   }
 
+  /// [x] pe [y] ki oonchai wali zameen hai?
+  bool _hasGround(double x, double y) => world.level.ground.any(
+    (s) => x >= s.left && x <= s.right && (s.top - y).abs() < 8,
+  );
+
   double _groundAt(double x) {
     var best = 400.0;
     var found = false;
-    for (final s in world.level.solids) {
+    for (final s in world.level.ground) {
       if (x >= s.left && x <= s.right && (!found || s.top < best)) {
         best = s.top;
         found = true;
@@ -210,7 +195,7 @@ class WorldPainter extends CustomPainter {
   /// [from]..[to] mein jahan zameen nahi (darya ka paani wahan dikhta hai)
   List<(double, double)> _gaps(double from, double to) {
     final spans = [
-      for (final s in world.level.solids)
+      for (final s in world.level.ground)
         if (s.height >= 10) (s.left, s.right),
     ]..sort((a, b) => a.$1.compareTo(b.$1));
     final out = <(double, double)>[];
@@ -468,8 +453,8 @@ class WorldPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// Darakht se tooti shaakh: lambi lakdi, chhaal ki lakeerein, ek sira toota hua (daantedaar), chhoti
-  /// tehniyan aur patte. Girte waqt ghoomti hai; zameen pe halki teRhi leti hai.
+  /// Darakht se aandhi mein tooti shaakh (props.dart: drawBrokenBranch). Girte waqt ghoomti hai;
+  /// zameen pe halki teRhi leti hai.
   void _branch(
     Canvas canvas,
     Offset c,
@@ -477,64 +462,22 @@ class WorldPainter extends CustomPainter {
     int seed, {
     required bool falling,
   }) {
-    final len = r * 4.6, thick = r * 1.1;
     final angle = falling
         ? sin(world.time * 5 + seed) * 0.22
         : (seed.isEven ? 0.05 : -0.05);
     canvas.save();
     canvas.translate(c.dx, c.dy);
     canvas.rotate(angle);
-    final half = len / 2;
-    // Lakdi: ek sira gol kata, doosra toota hua (daantedaar)
-    final wood = Path()
-      ..moveTo(-half + thick * 0.4, -thick / 2)
-      ..lineTo(half - 6, -thick / 2 + 1)
-      ..lineTo(half, -thick * 0.2)
-      ..lineTo(half - 5, -thick * 0.05)
-      ..lineTo(half + 2, thick * 0.15)
-      ..lineTo(half - 4, thick * 0.32)
-      ..lineTo(half - 1, thick / 2)
-      ..lineTo(-half + thick * 0.4, thick / 2)
-      ..arcToPoint(
-        Offset(-half + thick * 0.4, -thick / 2),
-        radius: Radius.circular(thick / 2),
-      )
-      ..close();
-    canvas.drawPath(wood, _black);
-    // Chhaal ki lakeerein
-    final bark = Paint()
-      ..color = const Color(0x33BFBFBF)
-      ..strokeWidth = 0.8;
-    for (var k = 0; k < 4; k++) {
-      final x = -half + 10 + k * len / 4.4;
-      canvas.drawLine(
-        Offset(x, -thick * 0.25),
-        Offset(x + 9, -thick * 0.18),
-        bark,
-      );
-    }
-    // Chhoti tehniyan aur patte
-    final twig = Paint()
-      ..color = const Color(0xFF070707)
-      ..strokeWidth = 1.6
-      ..strokeCap = StrokeCap.round;
-    for (final (x, a, l) in [
-      (-half * 0.3, -0.7, 14.0),
-      (half * 0.25, -1.0, 11.0),
-      (half * 0.55, 0.9, 9.0),
-    ]) {
-      final from = Offset(x, -thick / 2);
-      final to = from + Offset(sin(a) * l, -cos(a) * l);
-      canvas.drawLine(from, to, twig);
-      canvas.drawOval(Rect.fromCenter(center: to, width: 6, height: 3), _black);
-    }
-    // Halki roshni ki lakeer — taake girti shaakh andhere patton ke saamne bhi dikhe
-    canvas.drawPath(
-      wood,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.1
-        ..color = const Color(0x55E0E0E0),
+    // Kabhi toota sira baayen, kabhi daayen
+    if (seed.isOdd) canvas.scale(-1, 1);
+    drawBrokenBranch(
+      canvas,
+      r * 4.6,
+      r * 1.1,
+      seed,
+      world.time,
+      world.windAt(c.dx),
+      falling: falling,
     );
     canvas.restore();
   }
@@ -637,36 +580,28 @@ class WorldPainter extends CustomPainter {
     }
   }
 
-  /// Bailon ka parda hero ke saamne (andar chhupa), aur door urte parinde
-  void _refugeFront(Canvas canvas) {
-    final refuge = world.level.refuge;
-    if (refuge.length != 2) return;
-    final roof = refuge[0];
-    final pushers = [world.pos];
-    final probe = world.probeT;
-    if (probe != null) {
-      final (_, dx) = probeVines(probe);
-      // Neze ki nok aagay wale shikaari ke haath se aagay
-      pushers.add(Offset(world.hunters[0].x + dx + 40, world.hunters[0].y));
-    }
-    drawVineCurtain(
+  /// Gaddhay ke munh pe patton ka dhakkan (hero ke saamne), aur oopar daurte shikaariyon ke qadmon se
+  /// chhat se jharti mitti
+  void _hideoutFront(Canvas canvas) {
+    final hole = world.level.hideout;
+    if (hole == null) return;
+    final overhead = [
+      for (final b in world.hunters)
+        if (world.chaseActive &&
+            b.grounded &&
+            b.x > hole.left + 6 &&
+            b.x < hole.right - 6)
+          b.x,
+    ];
+    drawHideoutFront(
       canvas,
-      roof,
-      refuge[1].bottom,
+      hole,
+      _groundAt(hole.center.dx),
       world.time,
-      world.windAt(roof.left),
-      pushers,
+      world.windAt(hole.left),
+      [world.pos, for (final b in world.hunters) Offset(b.x, b.y)],
+      overhead,
     );
-    if (world.distractTime >= 0) {
-      final s = world.refugeTime - world.distractTime;
-      if (s < 5) {
-        drawBirdFlock(
-          canvas,
-          Offset(world.distractX, _groundAt(world.distractX) - 20),
-          s,
-        );
-      }
-    }
   }
 
   void _player(Canvas canvas) {
@@ -815,31 +750,35 @@ class WorldPainter extends CustomPainter {
     const looks = [Look.feathers, Look.shield, Look.archer];
     final px = world.pos.dx, py = world.pos.dy;
     if (world.state == PlayerState.fighting) {
-      // Larai: aagay wala neze se, doosra dhaal wala saath, kaman wala peeche nishana baandhe
+      // Larai: akele ko ghere mein lete hain — neze wala saamne, kaman wala thora peeche (door, chhota)
+      // nishana baandhe, dhaal wala hero ke peeche se ghoom kar doosri taraf se waar karta hai
       final (leadPose, leadDx) = leadFight(world.fightTime);
-      final (secondPose, secondDx) = secondFight(world.fightTime);
+      final (secondPose, secondDx, circling) = secondFight(world.fightTime);
+      // Kaman wala zameen pe khara ho — peeche gaddha ho to doosri taraf
+      var archerX = px - 62;
+      if (!_hasGround(archerX, py)) archerX = px + 110;
       drawFigure(
         canvas,
         look: Look.archer,
-        foot: Offset(px - 110, py),
+        foot: Offset(archerX, py - 5),
         dir: 1,
         phase: 0,
         moving: false,
         inAir: false,
         time: world.time,
-        scale: 1.06,
+        scale: 0.94,
         pose: const FigurePose((0.2, 0), (-0.25, 0), (1.55, 0), (1.2, 0.6)),
       );
       drawFigure(
         canvas,
         look: Look.shield,
-        foot: Offset(px + secondDx, py),
-        dir: 1,
-        phase: 0,
-        moving: false,
+        foot: Offset(px + secondDx, circling ? py - 4 : py),
+        dir: circling ? 1 : -1,
+        phase: world.time * 9,
+        moving: circling,
         inAir: false,
         time: world.time,
-        scale: 1.06,
+        scale: circling ? 0.97 : 1.06,
         pose: secondPose,
       );
       drawFigure(
@@ -891,16 +830,11 @@ class WorldPainter extends CustomPainter {
     for (var i = 0; i < world.hunters.length; i++) {
       // Har shikaari apne jism ki jagah: daurta, koodta, ya khara
       final b = world.hunters[i];
-      var x = b.x;
+      final x = b.x;
       if (x < camX - 60 || x > camX + viewW + 60) continue;
-      // Panah pe aagay wala shikaari bailon mein neza ghonpta hai
-      final probe = i == 0 ? world.probeT : null;
-      final probing = probe == null ? null : probeVines(probe);
-      x += probing?.$2 ?? 0;
       drawFigure(
         canvas,
         look: looks[i],
-        pose: probing?.$1,
         foot: Offset(x, b.y),
         dir: b.vx.abs() > 1
             ? b.vx.sign

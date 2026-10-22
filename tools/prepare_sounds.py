@@ -33,8 +33,15 @@ SOURCES = {
     151447: ("151/151447_2147090", "Long Rumbling Thunder", "billgrip"),
     # Peechha
     575447: ("575/575447_2282212", "Tribal Jungle Drum beat", "szegvari"),
-    621352: ("621/621352_13749321", "Male Yelling out a War Cry 3", "WelvynZPorterSamples"),
-    429336: ("429/429336_8649084", "39-gritos hombre", "Tomycatts"),
+    # Shikaariyon ki awaazen (Apocalypto jaisi): jhund ki "hi-yi-yi", hook, yip, munh pe haath ki "wa-wa-wa"
+    479551: ("479/479551_2524442", "R15-69-Native Americans and Horses", "craigsmith"),
+    401693: ("401/401693_5437016", "Guys Howling Fun", "valdrag"),
+    190548: ("190/190548_3512972", "Central American Indian Salute", "danielsilveira321"),
+    219860: ("219/219860_4071086", "crazy indian scream", "polmdx"),
+    # Kai log daurte hue (qadmon ka loop)
+    480677: ("480/480677_2524442", "R27-46-Many Run By on Dirty Floor", "craigsmith"),
+    635052: ("635/635052_5756735", "Panicked Running Footsteps on Grass", "sillygrizzlies"),
+    716949: ("716/716949_8698658", "Running on dry leaves", "AudioPapkin"),
     850166: ("850/850166_3552348", "swoosh_bamboo_03", "Evan_McLoud"),
     850164: ("850/850164_3552348", "swoosh_bamboo_01", "Evan_McLoud"),
     205938: ("205/205938_3842302", "Arrow Impact", "Twisted_Euphoria"),
@@ -51,9 +58,7 @@ SOURCES = {
     276600: ("276/276600_464940", "body_hit", "insanity54"),
     264062: ("264/264062_2971294", "Melee Weapon hit with male moan & body fall", "Paul368"),
     399617: ("399/399617_7386498", "Knife/sword stab #2", "SoundsForHim"),
-    # Panah: parde se guzarna, parindon ka jhund (shikaariyon ka dhyaan bhatakna)
-    656040: ("656/656040_8700431", "Birds flapping OWI", "nayahnaidoo"),
-    872635: ("872/872635_3199189", "bird scare fly away", "supaluci"),
+    # Panah: patton mein se gaddhay mein girna
     560261: ("560/560261_12560866", "Bush Rustle", "RoyalRose"),
 }
 
@@ -90,10 +95,10 @@ def layered(name, parts, length, fade_out):
         "trim", 0, length, "highpass", 40, "fade", "t", 0.005, length, fade_out, "norm", -1)
 
 
-def loop(name, sid, start, length, xfade=3.0, extra=()):
+def loop(name, sid, start, length, xfade=3.0, extra=(), source=None):
     """Seamless loop: aakhri hissa shuru wale pe crossfade, taake loop ka jor sunai na de"""
     t = os.path.join(CACHE, f"_{name}.raw")
-    sox(src(sid), "-c", 1, "-r", RATE, "-t", "raw", "-e", "signed", "-b", 16, t,
+    sox(source or src(sid), "-c", 1, "-r", RATE, "-t", "raw", "-e", "signed", "-b", 16, t,
         "trim", start, length + xfade, "highpass", 30, *extra, "norm", -3)
     a = array.array("h")
     with open(t, "rb") as f:
@@ -133,9 +138,25 @@ if __name__ == "__main__":
     loop("rain", 536843, 8, 36)
 
     # Peechha: jang ki cheekh, beech beech ki cheekhein, neze, dhol, aur hero ki tez saans
-    oneshot("warcry", 621352, 0.1, 6.5, 1.2)
-    for i, (t, length) in enumerate([(2.4, 0.8), (3.8, 0.6), (4.7, 0.9)], 1):
-        oneshot(f"shout{i}", 429336, t, length, 0.25)
+    # Jang ki cheekh: jhund ki "hi-yi-yi" (neeche ki ghoron ki dhamak highpass se hata di)
+    oneshot("warcry", 479551, 1.0, 5.0, 1.2, extra=("highpass", 230))
+    # Beech beech ki awaazen: hook, yip, munh pe haath ki "wa-wa-wa", kaanpti cheekh
+    shouts = [(401693, 0.25, 1.4), (401693, 2.55, 0.65), (190548, 0.28, 1.4),
+              (401693, 10.05, 0.8), (219860, 0.45, 1.9), (401693, 11.5, 1.2)]
+    for i, (sid, t, length) in enumerate(shouts, 1):
+        oneshot(f"shout{i}", sid, t, length, 0.25)
+    # Daurte shikaari: kai logon ke qadmon ki chaadar + oopar patton pe do alag daurte qadam
+    run = os.path.join(CACHE, "_hunters_run_mix.wav")
+    parts = []
+    for i, (sid, start, delay, vol, hp) in enumerate([(480677, 4.0, 0, 1.0, 60),
+                                                      (635052, 2.5, 0.13, 0.55, 90),
+                                                      (716949, 0.5, 0.31, 0.45, 90)]):
+        t = os.path.join(CACHE, f"_hunters_run_{i}.wav")
+        sox(src(sid), "-c", 1, "-r", RATE, t, "trim", start, 26, "highpass", hp, "norm", -3,
+            "vol", vol, "pad", delay)
+        parts.append(t)
+    sox("-m", *parts, run, "trim", 0, 25.5)
+    loop("hunters_run", None, 0, 22, source=run)
     oneshot("spear_throw1", 850166, 0, 0.41, 0.15)
     oneshot("spear_throw2", 850164, 0, 0.6, 0.2)
     oneshot("spear_stick", 205938, 0, 0.6, 0.25)
@@ -158,7 +179,6 @@ if __name__ == "__main__":
         oneshot(f"stab{i}", 399617, t, 0.5, 0.15)
 
     # Panah
-    layered("birds_flee", [(872635, 0, 0, 1.0), (656040, 5.1, 0.25, 0.9)], 2.6, 1.2)
     oneshot("rustle", 560261, 0.6, 1.1, 0.4)
 
     with open(os.path.join(OUT, "CREDITS.md"), "w") as f:

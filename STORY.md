@@ -18,10 +18,11 @@ Kahani bina alfaaz ke dikhayi jaati hai (Limbo ki tarah): silhouettes, awaazein,
 - Shikaari peeche daurte aate hain — ruke ya ghalti ki to pakar lenge.
 - Neze phenkte hain (kaman mein) — chalte raho ya koodo.
 - Hilte platformon wale bare gaddhay paar nahi kar sakte — kinare se neze phenkte hain, phir doosre raaste se aate hain.
-- **Har chapter ke aakhir mein panah:** hero bailon ke parde ke peeche ek khoh mein chhup jata hai (aankhen band,
-  saans roke). Shikaari munh tak aate hain, idhar udhar dekhte hain, parde mein neza ghonpte hain — tabhi door
-  jhaariyon se parinde phar-phara kar urte hain; shikaari samajhte hain hero udhar gaya aur us taraf bhaag jaate hain.
+- **Har chapter ke aakhir mein panah:** zameen mein patton se dhaka ek gaddha — hero us mein gir kar neeche ki
+  khokhli jagah mein chhup jata hai (aankhen band, saans roke). Shikaari daurte hue theek us ke oopar aa kar rukte
+  hain, idhar udhar dekhte hain (chhat se mitti jharti hai), phir us ke oopar se guzar kar aagay bhaag jaate hain.
   Hero aankhen kholta hai: *"Safe — for now."*
+- Pakre jaane pe shikaari akele hero ko ghere mein lete hain — ek saamne, ek ghoom kar peeche se, kaman wala thora door.
 - Awaaz: jang ki cheekh se shuru, dhol jo qareeb aate hi tez ho, beech beech mein cheekhein, hero ki tez saans.
 
 ## Chapters

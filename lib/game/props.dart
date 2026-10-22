@@ -419,208 +419,371 @@ void drawBridge(Canvas canvas, Rect r, double t, double wind) {
   }
 }
 
-/// Panah: bari chattan jis ka oopar wala hissa chhajje ki tarah aage nikla hai. [roof] chhajja, [wall] pichhli
-/// deewar (dono asal mein thos hain). Kinare ubar-khaabar, chhajje se latakti jarein, kinare se tapakte qatre,
-/// neeche halka saaya — andar sookha.
-void drawRefuge(
-  Canvas canvas,
-  Rect roof,
-  Rect wall,
-  double ground,
-  double t,
-  double wind,
-  double rain,
-) {
-  // Khoh ka andhera: andar jo hai bahar se nazar nahi aata
-  final shelter = Rect.fromLTRB(roof.left + 4, roof.bottom, wall.left, ground);
-  canvas.drawRect(
-    shelter,
-    Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xF5000000), Color(0xE0000000)],
-      ).createShader(shelter),
-  );
-  // Chattan: deewar neeche se, oopar se ubhra hua, aage nukeela chhajja
-  final rock = Path()..moveTo(wall.right + 8, ground);
-  final topY = roof.top;
-  final pts = <Offset>[
-    Offset(wall.right + 10, ground - 40),
-    Offset(wall.right + 4, topY + 14),
-    Offset(wall.right - 10, topY - 6),
-    Offset(wall.center.dx, topY - 12),
-    Offset(roof.center.dx + 20, topY - 4),
-    Offset(roof.center.dx - 25, topY - 9),
-    Offset(roof.left + 18, topY - 2),
-    Offset(roof.left - 4, topY + 8), // aage ki nok
-    Offset(roof.left + 2, roof.bottom + 2),
-    Offset(roof.left + 30, roof.bottom - 2),
-    Offset(roof.center.dx, roof.bottom + 3),
-    Offset(wall.left - 12, roof.bottom + 6),
-    Offset(wall.left - 4, roof.bottom + 30), // deewar ke saath gola
-    Offset(wall.left, ground - 20),
-    Offset(wall.left - 6, ground),
-  ];
-  // Har kinare pe chhote ubhaar aur gadhe — qudrati patthar, seedhi lakeerein nahi
-  for (var i = 0; i < pts.length; i++) {
-    final a = i == 0 ? Offset(wall.right + 8, ground) : pts[i - 1];
-    final b = pts[i];
-    for (var k = 1; k <= 3; k++) {
-      final f = k / 4;
-      final n = Offset(-(b - a).dy, (b - a).dx) / max(1, (b - a).distance);
-      final p = Offset.lerp(a, b, f)! + n * (_hash(i * 5 + k, 41) - 0.5) * 7;
-      rock.lineTo(p.dx, p.dy);
-    }
-    rock.lineTo(b.dx, b.dy);
+/// Chhupne ka gaddha: zameen ke neeche khokhli jagah (purani jaron ke neeche ki khoh). Kaali zameen mein
+/// halka andhera — taake andar ka kaala hero dikhe. [hole] andar ka hissa, [ground] zameen ki sath.
+/// Munh [hole.left]+8..+40 pe patli chhat se oopar khulta hai. Chhat se jarein latakti hain.
+void drawHideoutBack(Canvas canvas, Rect hole, double ground, double t) {
+  // Be-tarteeb gol khoh: neeche se chapti, oopar se ubar-khaabar
+  final c = hole.center;
+  final rx = hole.width / 2, ry = hole.height / 2;
+  final pocket = Path();
+  const n = 26;
+  for (var i = 0; i <= n; i++) {
+    final a = i / n * 2 * pi;
+    var y = sin(a);
+    y = y > 0 ? pow(y, 0.45).toDouble() : y; // neeche ka farsh chapta
+    final wob = 1 + (_hash(i % n, 71) - 0.5) * 0.16;
+    final p = c + Offset(cos(a) * rx * wob, y * ry * wob);
+    i == 0 ? pocket.moveTo(p.dx, p.dy) : pocket.lineTo(p.dx, p.dy);
   }
-  rock.close();
-  canvas.drawPath(rock, _fill);
-  // Chattan ki daraarein (halki si)
-  final crack = Paint()
-    ..color = const Color(0x22FFFFFF)
-    ..strokeWidth = 0.8
-    ..style = PaintingStyle.stroke;
+  pocket.close();
+  // Munh: chhat mein tircha surakh, oopar zameen tak
+  final mouthL = hole.left + 8, mouthR = hole.left + 40;
+  final mouth = Path()
+    ..moveTo(mouthL - 2, ground + 1)
+    ..lineTo(mouthL + 4, hole.top + 10)
+    ..lineTo(mouthR + 6, hole.top + 12)
+    ..lineTo(mouthR, ground + 1)
+    ..close();
+  final shape = Path.combine(PathOperation.union, pocket, mouth);
+  final bounds = Rect.fromLTRB(hole.left, ground, hole.right, hole.bottom);
   canvas.drawPath(
-    Path()
-      ..moveTo(wall.center.dx + 6, topY + 6)
-      ..lineTo(wall.center.dx - 2, topY + 30)
-      ..lineTo(wall.center.dx + 8, topY + 52),
-    crack,
+    shape,
+    Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(-0.55, -0.9), // roshni munh se aati hai
+        radius: 1.25,
+        colors: [Color(0xFF5C5F61), Color(0xFF333537), Color(0xFF18191A)],
+        stops: [0, 0.45, 1],
+      ).createShader(bounds),
   );
-  // Chhajje se latakti jarein aur bailen — hawa mein halki hilti hui
-  final root = Paint()
-    ..color = _ink
-    ..strokeWidth = 1.2
-    ..style = PaintingStyle.stroke
-    ..strokeCap = StrokeCap.round;
-  for (var k = 0; k < 7; k++) {
-    final x = roof.left + 12 + k * (roof.width - 50) / 6;
-    final len = 10 + _hash(k, 31) * 26;
-    final sway = sin(t * 1.4 + k) * 2 + wind * 4;
-    final top = Offset(x, roof.bottom + 1);
-    canvas.drawPath(
-      Path()
-        ..moveTo(top.dx, top.dy)
-        ..quadraticBezierTo(
-          top.dx + sway * 0.4,
-          top.dy + len * 0.5,
-          top.dx + sway,
-          top.dy + len,
-        ),
-      root,
+  // Farsh pe chhote kankar aur mitti ke dheer
+  for (var k = 0; k < 9; k++) {
+    final x = hole.left + 14 + _hash(k, 72) * (hole.width - 28);
+    final r = 1.2 + _hash(k, 73) * 2.2;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(x, hole.bottom - 1 - r * 0.3),
+        width: r * 2.4,
+        height: r * 1.3,
+      ),
+      _fill,
     );
   }
-  // Baarish mein chhajje ke kinare se tapakte qatre
-  if (rain > 0.1) {
-    final drop = Paint()
-      ..color = const Color(0xFFD5DADD).withValues(alpha: 0.75 * rain);
-    for (var k = 0; k < 4; k++) {
-      final u = (t * 1.2 + _hash(k, 33)) % 1;
-      final x = roof.left + 4 + _hash(k, 34) * 30;
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(x, roof.bottom + 4 + u * (ground - roof.bottom - 4)),
-          width: 1.4,
-          height: 3.2,
-        ),
-        drop,
+  // Chhat se latakti jarein — oopar ke darakht ki, mitti mein se nikli hui, aahista hilti
+  final root = Paint()
+    ..color = _ink
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  for (var k = 0; k < 11; k++) {
+    final x = mouthR + 6 + _hash(k, 74) * (hole.right - mouthR - 14);
+    final top = Offset(x, hole.top + 4 + _hash(k, 75) * 4);
+    final len = 6 + _hash(k, 76) * (hole.height * 0.55);
+    final sway = sin(t * 0.9 + k * 1.7) * 1.2;
+    root.strokeWidth = 0.6 + _hash(k, 77) * 1.4;
+    final end = top + Offset((_hash(k, 78) - 0.5) * 10 + sway, len);
+    final path = Path()
+      ..moveTo(top.dx, top.dy)
+      ..quadraticBezierTo(
+        top.dx + (_hash(k, 79) - 0.5) * 8,
+        top.dy + len * 0.55,
+        end.dx,
+        end.dy,
       );
+    // Shaakh dar shaakh: beech se ek patli jar alag
+    if (_hash(k, 80) < 0.6) {
+      final mid = top + Offset((end.dx - top.dx) * 0.5, len * 0.5);
+      path
+        ..moveTo(mid.dx, mid.dy)
+        ..quadraticBezierTo(
+          mid.dx + 4,
+          mid.dy + len * 0.2,
+          mid.dx + 3 + sway,
+          mid.dy + len * 0.35,
+        );
     }
+    canvas.drawPath(path, root);
   }
 }
 
-/// Chhajje se zameen tak latakta bailon ka parda — khoh ka munh chhupata hai.
-/// [pushers] ke qareeb bailen hat jaati hain (guzarta hero, ghonpa gaya neza).
-void drawVineCurtain(
+/// Gaddhay ke munh pe gire patton aur fern ka dhakkan (hero ke saamne). [pushers] (hero, shikaariyon ke
+/// paon) ke qareeb patte dab jaate hain. [overhead]: jo shikaari abhi chhat ke oopar hain — un ke qadmon se
+/// chhat se mitti jharti hai.
+void drawHideoutFront(
   Canvas canvas,
-  Rect roof,
+  Rect hole,
   double ground,
   double t,
   double wind,
   List<Offset> pushers,
+  List<double> overhead,
 ) {
-  final vine = Paint()
+  final mouthL = hole.left + 8, mouthR = hole.left + 40;
+  // Mitti ke zarre: chhat se gir kar farsh tak
+  final dirt = Paint()..color = const Color(0xFF0E0E0E);
+  for (var h = 0; h < overhead.length; h++) {
+    for (var k = 0; k < 6; k++) {
+      final u = (t * 1.3 + _hash(k + h * 7, 81)) % 1;
+      final x = (overhead[h] + (_hash(k + h * 7, 82) - 0.5) * 18).clamp(
+        mouthR + 4,
+        hole.right - 8,
+      );
+      final y = hole.top + 6 + u * u * (hole.height - 10);
+      canvas.drawCircle(Offset(x, y), 0.7 + _hash(k, 83) * 0.7, dirt);
+    }
+  }
+  // Fern ki pattiyan dono kinaron se munh ke oopar jhuki — sath pe dhakkan
+  final stem = Paint()
     ..color = _ink
-    ..strokeWidth = 1.3
+    ..strokeWidth = 1.1
     ..style = PaintingStyle.stroke
     ..strokeCap = StrokeCap.round;
-  final leaf = Paint()..color = _ink;
-  const strands = 22;
-  for (var k = 0; k < strands; k++) {
-    // Be-tarteeb faasle aur lambaai — bagh ki jaali nahi, qudrati bailen
-    final x = roof.left - 6 + k * 1.9 + (_hash(k, 51) - 0.5) * 5;
-    final top = Offset(x, roof.bottom - 2 - _hash(k, 54) * 4);
-    final full = ground - top.dy;
-    final len = full * (_hash(k, 52) < 0.25 ? 0.55 + _hash(k, 55) * 0.3 : 1);
-    vine.strokeWidth = 0.8 + _hash(k, 56) * 1.0;
-    // Hawa mein halka jhoolna, aur paas aane wali cheez se door hatna
-    var push = sin(t * 1.1 + k * 0.7) * 1.5 + wind * 3;
+  for (var k = 0; k < 7; k++) {
+    final fromLeft = k.isEven;
+    final base = Offset(
+      fromLeft
+          ? mouthL - 10 + _hash(k, 84) * 8
+          : mouthR + 10 - _hash(k, 84) * 8,
+      ground + 1,
+    );
+    final dir = fromLeft ? 1.0 : -1.0;
+    final len = 22 + _hash(k, 85) * 14;
+    // Hawa ka jhoolna; paas se guzarne wale paon / girta hero pattiyan neeche dabaata hai
+    var droop = 0.12 + sin(t * 1.3 + k) * 0.05 + wind * 0.06 * dir;
     for (final p in pushers) {
-      final d = x - p.dx;
-      if (d.abs() < 26) push += (d >= 0 ? 1 : -1) * (26 - d.abs()) * 0.9;
+      final d = (p.dx - (base.dx + dir * len * 0.5)).abs();
+      if (d < 24 && p.dy > ground - 50 && p.dy < hole.bottom + 4) {
+        droop += (24 - d) / 24 * 0.9;
+      }
     }
-    final bottom = top + Offset(push, len);
-    final bend = (_hash(k, 57) - 0.5) * 6;
-    final path = Path()
-      ..moveTo(top.dx, top.dy)
-      ..quadraticBezierTo(
-        top.dx + push * 0.2 + bend,
-        top.dy + len * 0.5,
-        bottom.dx,
-        bottom.dy,
+    final a = -0.35 + droop + _hash(k, 86) * 0.2; // pehle oopar, phir jhuk kar
+    final tip = base + Offset(dir * len * cos(a), len * sin(a));
+    final ctrl = base + Offset(dir * len * 0.45, -8 + droop * 10);
+    canvas.drawPath(
+      Path()
+        ..moveTo(base.dx, base.dy)
+        ..quadraticBezierTo(ctrl.dx, ctrl.dy, tip.dx, tip.dy),
+      stem,
+    );
+    // Pattiyan: chhoti, jor dar jor (sir se chhoti)
+    for (var j = 1; j <= 7; j++) {
+      final f = j / 8;
+      final q = Offset(
+        (1 - f) * (1 - f) * base.dx +
+            2 * f * (1 - f) * ctrl.dx +
+            f * f * tip.dx,
+        (1 - f) * (1 - f) * base.dy +
+            2 * f * (1 - f) * ctrl.dy +
+            f * f * tip.dy,
       );
-    canvas.drawPath(path, vine);
-    // Bailon pe chhote patte (sir se chhote), oopar ghane
-    final leaves = 7 + (_hash(k, 58) * 7).floor();
-    for (var j = 0; j < leaves; j++) {
-      final f = pow((j + _hash(k * 13 + j, 53)) / leaves, 1.3).toDouble();
-      final p = Offset(
-        top.dx + push * f * f * 0.8 + (push * 0.2 + bend) * 2 * f * (1 - f),
-        top.dy + len * f,
-      );
-      final side = _hash(k * 13 + j, 59) < 0.5 ? 1.0 : -1.0;
-      final size = 0.8 + _hash(k * 13 + j, 60) * 0.5;
-      canvas.save();
-      canvas.translate(p.dx, p.dy);
-      canvas.rotate(
-        side * (0.7 + _hash(j, k) * 0.7 + sin(t * 2 + k + j) * 0.15),
-      );
-      canvas.drawPath(
-        Path()
-          ..moveTo(0, 0)
-          ..quadraticBezierTo(2.2 * size, 3 * size, 0, 7 * size)
-          ..quadraticBezierTo(-2.2 * size, 3 * size, 0, 0),
-        leaf,
-      );
-      canvas.restore();
+      final size = 4.5 * (1 - f * 0.6);
+      for (final side in [-1.0, 1.0]) {
+        canvas.save();
+        canvas.translate(q.dx, q.dy);
+        canvas.rotate(dir * (0.6 + f * 0.6) + side * 1.1 + droop * 0.4);
+        canvas.drawPath(
+          Path()
+            ..moveTo(0, 0)
+            ..quadraticBezierTo(1.4, size * 0.5, 0, size)
+            ..quadraticBezierTo(-1.4, size * 0.5, 0, 0),
+          _fill,
+        );
+        canvas.restore();
+      }
     }
+  }
+  // Munh ke oopar bikhre sookhe patte aur tehniyan (sath ke barabar)
+  final twig = Paint()
+    ..color = _ink
+    ..strokeWidth = 1.3
+    ..strokeCap = StrokeCap.round;
+  for (var k = 0; k < 4; k++) {
+    final x = mouthL + _hash(k, 87) * (mouthR - mouthL);
+    final y = ground + 1 + _hash(k, 88) * 2;
+    final l = 10 + _hash(k, 89) * 10;
+    final a = (_hash(k, 90) - 0.5) * 0.5;
+    canvas.drawLine(
+      Offset(x - cos(a) * l / 2, y - sin(a) * l / 2),
+      Offset(x + cos(a) * l / 2, y + sin(a) * l / 2),
+      twig,
+    );
   }
 }
 
-/// Jhaariyon se phar-phara kar urte parinde; [s] = urne ke baad ke second
-void drawBirdFlock(Canvas canvas, Offset from, double s) {
-  final wing = Paint()
-    ..color = _ink
-    ..strokeWidth = 1.8
-    ..style = PaintingStyle.stroke
-    ..strokeCap = StrokeCap.round;
-  for (var i = 0; i < 16; i++) {
-    final delay = _hash(i, 61) * 0.35;
-    final u = s - delay;
-    if (u < 0) continue;
-    final vx = -(25 + _hash(i, 62) * 70);
-    final vy = -(150 + _hash(i, 63) * 90);
-    final start = from + Offset((_hash(i, 64) - 0.5) * 60, -_hash(i, 65) * 20);
-    final p = start + Offset(vx * u, vy * u + 25 * u * u);
-    final flap = sin(u * 26 + i) * 4.5;
-    final w = 6 + _hash(i, 66) * 3;
-    canvas.drawPath(
-      Path()
-        ..moveTo(p.dx - w, p.dy - flap)
-        ..quadraticBezierTo(p.dx - w * 0.4, p.dy - 1, p.dx, p.dy)
-        ..quadraticBezierTo(p.dx + w * 0.4, p.dy - 1, p.dx + w, p.dy - flap),
-      wing,
+/// Aandhi mein darakht se tooti shaakh — kati hui lakdi nahi: mota sira chira hua (lambi kirchiyan, andar ki
+/// halki lakdi dikhti hai), aagay patli hoti, teRhi, gaanthon wali; beech se ek shaakh phooti hui, sire pe
+/// tehniyan aur patton ke guchhe. Beech (0,0) pe, [len] lambi, [thick] moti. Toota sira baayen (-x).
+void drawBrokenBranch(
+  Canvas canvas,
+  double len,
+  double thick,
+  int seed,
+  double t,
+  double wind, {
+  required bool falling,
+}) {
+  final half = len / 2;
+  double h(int i) => _hash(i + seed * 31, 91);
+  // Darmiyani lakeer (halki teRhi) aur har jagah moti'i: mote sire se patle sire tak
+  const n = 9;
+  Offset mid(double f) => Offset(
+    -half + f * len,
+    sin(f * 2.6 + seed) * thick * 0.12 + f * f * thick * 0.15,
+  );
+  double width(double f) {
+    final knot = (h((f * n).round()) - 0.5) * 0.12; // gaanthein
+    return thick * (1 - f * 0.62 + knot);
+  }
+
+  final top = <Offset>[], bottom = <Offset>[];
+  for (var i = 0; i <= n; i++) {
+    final f = i / n;
+    final w = width(f) / 2;
+    top.add(mid(f) + Offset(0, -w));
+    bottom.add(mid(f) + Offset(0, w));
+  }
+  final wood = Path()..moveTo(top.first.dx, top.first.dy);
+  for (final p in top.skip(1)) {
+    wood.lineTo(p.dx, p.dy);
+  }
+  // Patla sira: gol nahi, aagay tehniyon mein khatam
+  wood.lineTo(half + 3, mid(1).dy);
+  for (final p in bottom.reversed) {
+    wood.lineTo(p.dx, p.dy);
+  }
+  // Toota sira: aari se kata seedha nahi — reshe khinch kar toote, lambi chhoti kirchiyan
+  const splinters = 7;
+  final b0 = bottom.first, t0 = top.first;
+  for (var i = 1; i < splinters; i++) {
+    final f = i / splinters;
+    final y = b0.dy + (t0.dy - b0.dy) * f;
+    final reach = (i.isOdd ? 4 + h(i + 40) * 12 : h(i + 50) * 3);
+    wood.lineTo(b0.dx - reach, y);
+    wood.lineTo(
+      b0.dx + 1 + h(i + 60) * 3,
+      y + (t0.dy - b0.dy) / splinters * 0.5,
     );
   }
+  wood.close();
+  final fill = Paint()..color = _ink;
+  canvas.drawPath(wood, fill);
+
+  // Beech se phooti shaakh (oopar ki taraf), aage do tehniyan
+  final forkF = 0.35 + h(1) * 0.15;
+  final forkBase = mid(forkF) + Offset(0, -width(forkF) * 0.3);
+  final forkAngle = -0.75 - h(2) * 0.35; // oopar-aagay
+  final forkLen = len * (0.36 + h(3) * 0.12);
+  final forkTip =
+      forkBase + Offset(cos(forkAngle) * forkLen, sin(forkAngle) * forkLen);
+  // Jor pe moti, aagay patli — lakdi ki tarah, danda nahi
+  final forkCtrl = forkBase + Offset(forkLen * 0.55, -forkLen * 0.2);
+  Offset bez(double f) => Offset(
+    (1 - f) * (1 - f) * forkBase.dx +
+        2 * f * (1 - f) * forkCtrl.dx +
+        f * f * forkTip.dx,
+    (1 - f) * (1 - f) * forkBase.dy +
+        2 * f * (1 - f) * forkCtrl.dy +
+        f * f * forkTip.dy,
+  );
+  final left = <Offset>[], right = <Offset>[];
+  for (var i = 0; i <= 6; i++) {
+    final f = i / 6;
+    final d = bez(min(1, f + 0.01)) - bez(max(0, f - 0.01));
+    final nrm = Offset(-d.dy, d.dx) / d.distance;
+    final w = thick * (0.42 - f * 0.3) / 2;
+    left.add(bez(f) + nrm * w);
+    right.add(bez(f) - nrm * w);
+  }
+  canvas.drawPath(Path()..addPolygon([...left, ...right.reversed], true), fill);
+  final limb = Paint()
+    ..color = _ink
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  // Ek chhota toota thoonth (pehle se tooti tehni)
+  final stubF = 0.62 + h(4) * 0.1;
+  final stub = mid(stubF) + Offset(0, width(stubF) * 0.4);
+  canvas.drawLine(stub, stub + Offset(5, 7), limb..strokeWidth = thick * 0.2);
+
+  // Tehniyan aur patte: patle sire aur phooti shaakh ke sire pe
+  final twig = Paint()
+    ..color = _ink
+    ..strokeWidth = 1.2
+    ..strokeCap = StrokeCap.round;
+  final sway = falling
+      ? sin(t * 9 + seed) * 0.25
+      : sin(t * 1.5 + seed) * 0.05 + wind * 0.05;
+  var leafI = 0;
+  void spray(Offset from, double angle, int count, double reach) {
+    for (var k = 0; k < count; k++) {
+      final a =
+          angle + (k - (count - 1) / 2) * 0.5 + (h(k + leafI) - 0.5) * 0.3;
+      final l = reach * (0.6 + h(k + leafI + 7) * 0.5);
+      final end = from + Offset(cos(a) * l, sin(a) * l);
+      canvas.drawLine(from, end, twig);
+      // Patton ka guchha: chhote, nukeele, alag alag rukh (sir se chhote)
+      final leaves = 3 + (h(k + leafI + 11) * 3).floor();
+      for (var j = 0; j < leaves; j++) {
+        leafI++;
+        final along = Offset.lerp(from, end, 0.55 + j / leaves * 0.45)!;
+        final size = 4.5 + h(leafI + 13) * 2.5;
+        canvas.save();
+        canvas.translate(along.dx, along.dy);
+        canvas.rotate(
+          a + (j.isEven ? 1 : -1) * (0.7 + h(leafI + 17) * 0.6) + sway,
+        );
+        canvas.drawPath(
+          Path()
+            ..moveTo(0, 0)
+            ..quadraticBezierTo(size * 0.5, -size * 0.32, size, 0)
+            ..quadraticBezierTo(size * 0.5, size * 0.32, 0, 0),
+          fill,
+        );
+        canvas.restore();
+      }
+      leafI += 3;
+    }
+  }
+
+  spray(Offset(half + 2, mid(1).dy), -0.15, 4, thick * 1.2);
+  spray(mid(0.8) + Offset(0, -width(0.8) * 0.4), -0.9, 2, thick * 0.8);
+  spray(forkTip, forkAngle + 0.15, 4, thick);
+
+  // Chiri hui andar ki lakdi — toote sire pe halki lakeerein (sirf wahan rang halka)
+  final inner = Paint()
+    ..color = const Color(0x88C8C2B8)
+    ..strokeWidth = 0.9
+    ..strokeCap = StrokeCap.round;
+  for (var i = 0; i < 4; i++) {
+    final y = b0.dy + (t0.dy - b0.dy) * (0.2 + i * 0.2);
+    final x = b0.dx + 1 - h(i + 70) * 2;
+    canvas.drawLine(
+      Offset(x, y),
+      Offset(x - 3 - h(i + 80) * 7, y + 0.4),
+      inner,
+    );
+  }
+  // Chhaal: lambai mein reshe, seedhe kate chhalle nahi
+  final bark = Paint()
+    ..color = const Color(0x2EBFBFBF)
+    ..strokeWidth = 0.7
+    ..style = PaintingStyle.stroke;
+  for (var k = 0; k < 3; k++) {
+    final y0 = (k - 1) * thick * 0.18;
+    final path = Path()..moveTo(-half + 8, mid(0.08).dy + y0);
+    for (var i = 2; i <= 7; i++) {
+      final f = i / n;
+      final p =
+          mid(f) + Offset(0, y0 * (1 - f * 0.6) + (h(i * 3 + k) - 0.5) * 1.5);
+      path.lineTo(p.dx, p.dy);
+    }
+    canvas.drawPath(path, bark);
+  }
+  // Halki roshni ki lakeer — taake andhere patton ke saamne bhi shaakh dikhe
+  canvas.drawPath(
+    wood,
+    Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = const Color(0x44E0E0E0),
+  );
 }
