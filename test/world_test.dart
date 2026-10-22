@@ -271,7 +271,7 @@ void main() {
       w.update(0.1, Input());
       expect(w.chaseActive, isTrue);
       expect(w.events, contains(GameEvent.chaseStart));
-      w.update(5, Input());
+      w.update(9, Input()); // daur kar pahunchna + larai + maut
       expect(
         w.deaths,
         greaterThanOrEqualTo(1),
@@ -290,7 +290,19 @@ void main() {
     });
 
     test('shikaari neze phenkte hain, aur khare player ko lagta hai', () {
-      final w = World(chaseLevel());
+      // Player oonchi chattan pe (jump se oonchi) — shikaari chadh kar pakar nahi sakte, sirf neze
+      const level = Level(
+        solids: [
+          Rect.fromLTWH(-1000, 400, 4000, 200),
+          Rect.fromLTWH(400, 260, 200, 140),
+        ],
+        spikes: [],
+        saws: [],
+        checkpoints: [Offset(500, 260)],
+        goalX: 2900,
+        chase: Chase(startX: 100),
+      );
+      final w = World(level);
       var thrown = false;
       var hit = false;
       for (var i = 0; i < 160 && !hit; i++) {
@@ -324,8 +336,8 @@ void main() {
 
     test('marne ke baad shikaari mohlat dete hain', () {
       final w = World(chaseLevel());
-      while (w.state == PlayerState.alive) {
-        w.update(0.05, Input()); // khara raha, pakra jayega
+      while (w.state != PlayerState.dead) {
+        w.update(0.05, Input()); // khara raha: pakra gaya, larai, maut
       }
       w.update(World.respawnDelay + 0.05, Input());
       expect(w.state, PlayerState.alive);
@@ -608,6 +620,77 @@ void main() {
       expect(w.hunterDir, -1); // laut rahe hain
       expect(w.hunterX, lessThan(nearest - 100));
       expect(w.state, PlayerState.won); // panah mein mehfooz
+    });
+  });
+
+  group('shikaari bhi insaan hain', () {
+    World chaseOn(
+      List<Rect> solids, {
+      List<Rect> spikes = const [],
+      double playerX = 900,
+      double playerY = 400,
+    }) {
+      final w = World(
+        Level(
+          solids: solids,
+          spikes: spikes,
+          saws: const [],
+          checkpoints: [Offset(playerX, playerY)],
+          goalX: 5000,
+          chase: const Chase(startX: 0, throwEvery: 999),
+        ),
+      )..update(1 / 60, Input());
+      return w;
+    }
+
+    test('kaanton ke oopar se koodte hain, aar paar nahi chalte', () {
+      final w = chaseOn(
+        const [Rect.fromLTWH(-1000, 400, 3000, 200)],
+        spikes: const [Rect.fromLTWH(600, 384, 48, 16)],
+      );
+      var jumpedAtSpike = false;
+      for (var i = 0; i < 60 * 6 && w.state == PlayerState.alive; i++) {
+        w.update(1 / 60, Input());
+        w.spears.clear();
+        final lead = w.hunters.first;
+        if (lead.x > 590 && lead.x < 660 && lead.y < 384) jumpedAtSpike = true;
+        // Kaanton ke andar kabhi khara nahi
+        expect(
+          lead.x > 600 && lead.x < 648 && lead.y >= 399 && lead.grounded,
+          isFalse,
+        );
+      }
+      expect(jumpedAtSpike, isTrue);
+    });
+
+    test('aam gaddha kood kar paar karte hain', () {
+      final w = chaseOn(const [
+        Rect.fromLTWH(-1000, 400, 1500, 200),
+        Rect.fromLTWH(590, 400, 2000, 200),
+      ]);
+      for (var i = 0; i < 60 * 6 && w.state == PlayerState.alive; i++) {
+        w.update(1 / 60, Input());
+        w.spears.clear();
+      }
+      expect(w.hunters.first.x, greaterThan(600)); // gaddha (500–590) paar
+      expect(w.hunters.first.y, 400);
+    });
+
+    test('jump se oonchi chattan pe nahi chadh sakte, aur wahan khare hero ko pakar nahi sakte', () {
+      final w = chaseOn(
+        const [
+          Rect.fromLTWH(-1000, 400, 3000, 200),
+          Rect.fromLTWH(800, 260, 200, 140),
+        ],
+        playerX: 900,
+        playerY: 260,
+      );
+      for (var i = 0; i < 60 * 8; i++) {
+        w.update(1 / 60, Input());
+        w.spears.clear();
+        expect(w.state, isNot(PlayerState.fighting));
+      }
+      expect(w.hunters.first.x, lessThan(800)); // chattan ke neeche ruke
     });
   });
 }

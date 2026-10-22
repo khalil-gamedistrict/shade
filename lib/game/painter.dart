@@ -773,10 +773,7 @@ class WorldPainter extends CustomPainter {
       final down = world.time - world.escapeTime;
       final rising = world.hunterStunUntil - world.time < 0.35;
       for (var i = 0; i < World.hunterGaps.length; i++) {
-        final foot = Offset(
-          world.hunterX - World.hunterGaps[i],
-          world.hunterFootY(world.hunterX - World.hunterGaps[i]),
-        );
+        final foot = Offset(world.hunters[i].x, world.hunters[i].y);
         if (rising) {
           drawFigure(
             canvas,
@@ -803,21 +800,21 @@ class WorldPainter extends CustomPainter {
       }
       return;
     }
-    for (var i = 0; i < World.hunterGaps.length; i++) {
-      final x = world.hunterX - World.hunterGaps[i];
+    for (var i = 0; i < world.hunters.length; i++) {
+      // Har shikaari apne jism ki jagah: daurta, koodta, ya khara
+      final b = world.hunters[i];
+      final x = b.x;
       if (x < camX - 60 || x > camX + viewW + 60) continue;
-      final footY = world.hunterFootY(x);
-      final onGround = world.level.solids.any(
-        (s) => x >= s.left && x <= s.right && (s.top - footY).abs() < 1,
-      );
       drawFigure(
         canvas,
         look: looks[i],
-        foot: Offset(x, footY),
-        dir: world.hunterDir, // panah ke paas idhar udhar dekhte, phir laut'te
+        foot: Offset(x, b.y),
+        dir: b.vx.abs() > 1
+            ? b.vx.sign
+            : world.hunterDir, // jidhar ja raha; khara ho to idhar udhar dekhta
         phase: world.time * 9.5 + i * 1.7,
-        moving: world.hunterMoving,
-        inAir: !onGround,
+        moving: b.vx.abs() > 1 && b.grounded,
+        inAir: !b.grounded,
         time: world.time + i,
         wind: world.windAt(x),
         scale: 1.06,

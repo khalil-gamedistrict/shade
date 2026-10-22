@@ -99,6 +99,13 @@ class Chase {
   });
 }
 
+/// Ek shikaari ka jism: hero jaisi physics — chalna, koodna, girna (paon [x], [y] pe)
+class HunterBody {
+  double x, y, vx = 0, vy = 0;
+  bool grounded = true;
+  HunterBody(this.x, this.y);
+}
+
 /// Phenka hua neza: hawa mein kaman ki tarah, zameen pe gir kar gar jata hai
 class Spear {
   double x, y, vx, vy, age = 0;
@@ -473,7 +480,44 @@ class World {
   bool cinematic = false;
   bool allowChase = true;
   bool hunterMoving = false; // daur rahe hain ya gaddhay ke kinare khare
-  double hunterX = -1000; // sab se aagay wala shikaari
+  // Shikaari: [hunterX] woh jagah jahan aagay wala shikaari pahunchna chahta hai (peechha, gaddhay, panah ka
+  // hisaab). Asal jism [hunters] hain — hero jaisi physics se chalte aur koodte hue wahan tak jaate hain.
+  double _hx = -1000;
+  double get hunterX => _hx;
+  set hunterX(double v) {
+    final far = (v - _hx).abs() > 80;
+    _hx = v;
+    if (far) _snapHunters(); // bari chhalaang (shuru, zinda hona, nazar se door) — jism wahin rakh do
+  }
+
+  final hunters = [for (var i = 0; i < 3; i++) HunterBody(-1000, 400)];
+
+  /// Shikaariyon ki jaagah zameen pe: agar wahan gaddha ho to peeche ki zameen pe
+  void _snapHunters() {
+    for (var i = 0; i < hunters.length; i++) {
+      var x = _hx - hunterGaps[i];
+      var ground = _groundBelow(x);
+      // Wahan gaddha ho to pehle aage (gaddhay ke paar, jidhar sab ja rahe hain) zameen dhoondo, phir peeche
+      for (final step in [15.0, -15.0]) {
+        var probe = x;
+        for (var k = 0; k < 40 && ground >= level.deathY; k++) {
+          probe += step;
+          final g = _groundBelow(probe);
+          if (g < level.deathY) {
+            x = probe;
+            ground = g;
+          }
+        }
+      }
+      hunters[i]
+        ..x = x
+        ..y = ground >= level.deathY ? 400 : ground
+        ..vx = 0
+        ..vy = 0
+        ..grounded = true;
+    }
+  }
+
   double _throwTimer = 0;
   double _grace = 0; // zinda hone ke baad thori mohlat
   double _shoutTimer = 2;
@@ -496,22 +540,6 @@ class World {
       right = max(right, s.right);
     }
     return out;
-  }
-
-  /// Shikaari ke paon ki oonchai — gaddhay pe ho to chhalaang ki kaman
-  double hunterFootY(double x) {
-    final g = _groundBelow(x);
-    if (g < level.deathY) return g;
-    final sorted = [...level.solids]..sort((a, b) => a.left.compareTo(b.left));
-    Rect? before, after;
-    for (final s in sorted) {
-      if (s.right <= x) before = s;
-      if (s.left >= x && after == null) after = s;
-    }
-    if (before == null || after == null) return 400;
-    final t = (x - before.right) / max(1, after.left - before.right);
-    return min(before.top, after.top) -
-        sin(t * pi) * min(60, (after.left - before.right) * 0.6);
   }
 
   World([Level? level]) : level = level ?? Level.first() {
@@ -575,6 +603,7 @@ class World {
     time += dt;
     if (state == PlayerState.won) {
       _updateRefuge(dt);
+      _updateHunterBodies(dt);
       return;
     }
     if (state == PlayerState.fighting) {
@@ -606,6 +635,7 @@ class World {
     }
     _updateRocks(dt);
     _updateChase(dt);
+    _updateHunterBodies(dt);
     _updateSpears(dt);
     final solids = solidsNow();
 
@@ -685,7 +715,11 @@ class World {
     final water = level.waterY;
     if (water != null && pos.dy > water + 12) return DeathKind.drown;
     if (pos.dy > level.deathY) return DeathKind.fall;
-    if (chaseActive && time >= hunterStunUntil && hunterX >= pos.dx - 26) {
+    final lead = hunters.first;
+    final reach =
+        lead.x >= pos.dx - 26 &&
+        (lead.y - pos.dy).abs() < 30; // oonchi jagah pe nahi pakar sakte
+    if (chaseActive && time >= hunterStunUntil && reach) {
       fallDir = 1; // peeche se waar — aagay muun ke bal
       return DeathKind.caught;
     }
@@ -870,11 +904,14 @@ class World {
 
     // Neze phenkna — player jahan hoga wahan ka andaza laga kar
     _throwTimer -= dt;
-    final dist = pos.dx - hunterX;
-    if (_throwTimer <= 0 && dist > 110 && dist < 520) {
+    final dist = pos.dx - hunters.first.x;
+    if (_throwTimer <= 0 &&
+        dist > 110 &&
+        dist < 520 &&
+        hunters.first.grounded) {
       final wobble = sin(time * 7.3) * 0.5 + 0.5; // har dafa thora alag waqt
       _throwTimer = chase.throwEvery * (0.75 + wobble * 0.5);
-      final sx = hunterX, sy = hunterFootY(hunterX) - 38;
+      final sx = hunters.first.x, sy = hunters.first.y - 38;
       final t = (dist / 360).clamp(0.75, 1.3);
       // Har teesra neza seedha nishane pe; baaqi aas paas girte hain (darate hain) —
       // asal khatra pakra jaana hai, taake larai ka manzar aur Break Free khel mein aayen
@@ -910,6 +947,128 @@ class World {
       }
     }
     spears.removeWhere((sp) => sp.age > 6 || sp.y > level.deathY);
+  }
+
+  /// Har shikaari apni jagah ([hunterX] - faasla) ki taraf daurta hai — hero jitni hi raftaar aur jump,
+  /// aagay khatra, deewar ya gaddha dekh kar koodta hai. Gaddhay mein gira to bahar (baad mein peeche se aayega).
+  void _updateHunterBodies(double dt) {
+    if (!chaseActive) return;
+    final solids = [
+      ...level.solids,
+      ...level.refuge,
+      for (var i = 0; i < level.rocks.length; i++)
+        if (rockState[i] == 2) rockRect(i),
+    ];
+    final hazards = [...level.spikes, ...level.traps, ...level.fires];
+    final stunned = time < hunterStunUntil;
+    for (var i = 0; i < hunters.length; i++) {
+      final b = hunters[i];
+      var target = _hx - hunterGaps[i];
+      // Manzil gaddhay mein ho to apni taraf ke kinare pe ruko (insaan paani/khai mein nahi chalta)
+      if (_groundBelow(target) >= level.deathY) {
+        final step = (b.x - target).sign * 10;
+        for (var k = 0; k < 80 && step != 0; k++) {
+          target += step;
+          final onGround = _groundBelow(target) < level.deathY;
+          final passedBody = (b.x - target).sign != step.sign;
+          if (onGround || passedBody) break;
+        }
+        target += step * 1.5; // kinare se thora andar (zameen ki taraf)
+      }
+      final dx = target - b.x;
+      // Insaani raftaar: hero se tez kabhi nahi
+      // Zameen pe raftaar chuno; hawa mein (koodte waqt) raftaar wahi rehti hai
+      if (b.grounded) {
+        b.vx = stunned || dx.abs() < 3
+            ? 0
+            : dx.sign * min(speed, max(60, dx.abs() * 4));
+      }
+      final dir = b.vx.sign;
+      if (b.grounded && dir != 0) {
+        final ahead = dir > 0
+            ? Rect.fromLTRB(b.x + 10, b.y - 60, b.x + 50, b.y + 1)
+            : Rect.fromLTRB(b.x - 50, b.y - 60, b.x - 10, b.y + 1);
+        final danger = hazards.any((h) => h.overlaps(ahead.inflate(4)));
+        final wall = solids.any((s) => s.overlaps(ahead) && s.top < b.y - 3);
+        final edge = !solids.any(
+          (s) =>
+              b.x + dir * 24 >= s.left &&
+              b.x + dir * 24 <= s.right &&
+              (s.top - b.y).abs() < 12,
+        );
+        // Aage sirf neeche zameen hai (seedhi/chabootre se utarna) — kood ke bajaye chal kar utro
+        bool groundNear(double x, double y, double below) => solids.any(
+          (s) =>
+              x >= s.left &&
+              x <= s.right &&
+              s.top >= y - 90 &&
+              s.top <= y + below,
+        );
+        final stepDown =
+            edge &&
+            !danger &&
+            !wall &&
+            groundNear(b.x + dir * 40, b.y + 13, 140);
+        if ((danger || wall || edge) && !stepDown) {
+          // Koodne se pehle dekho kahan giroge: sab se tez kood jo zameen pe utaare (gaddhay mein nahi)
+          const airTime = 2 * jumpVelocity / gravity;
+          double? jumpSpeed;
+          for (final v in [speed, speed * 0.82, speed * 0.66, speed * 0.52]) {
+            if (groundNear(b.x + dir * v * airTime, b.y, 90)) {
+              jumpSpeed = v;
+              break;
+            }
+          }
+          if (jumpSpeed == null) {
+            b.vx = 0; // mehfooz landing nahi — kinare pe ruk kar intezar (insaan andhi chhalaang nahi lagata)
+          } else {
+            b.vy = -jumpVelocity; // hero jitna hi oonchaa
+            b.vx = dir * jumpSpeed;
+            b.grounded = false;
+          }
+        }
+      }
+      b.vy += gravity * dt;
+      // Pehle aagay, deewar se takkar; phir oopar neeche, zameen pe tikna
+      b.x += b.vx * dt;
+      for (final s in solids) {
+        final r = Rect.fromLTWH(
+          b.x - playerW / 2,
+          b.y - playerH,
+          playerW,
+          playerH,
+        );
+        if (!r.overlaps(s)) continue;
+        b.x = b.vx > 0 ? s.left - playerW / 2 : s.right + playerW / 2;
+      }
+      b.grounded = false;
+      b.y += b.vy * dt;
+      for (final s in solids) {
+        final r = Rect.fromLTWH(
+          b.x - playerW / 2,
+          b.y - playerH,
+          playerW,
+          playerH,
+        );
+        if (!r.overlaps(s)) continue;
+        if (b.vy > 0) {
+          b.y = s.top;
+          b.grounded = true;
+        } else {
+          b.y = s.bottom + playerH;
+        }
+        b.vy = 0;
+      }
+      if (b.y > level.deathY) {
+        // Gaddhay mein gir gaya — kuch der baad peeche se, nazar se door
+        b
+          ..x = _hx - hunterGaps[i] - 420
+          ..y = 400
+          ..vy = 0;
+        final g = _groundBelow(b.x);
+        if (g < level.deathY) b.y = g;
+      }
+    }
   }
 
   void _updateRefuge(double dt) {
