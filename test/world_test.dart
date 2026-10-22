@@ -427,6 +427,100 @@ void main() {
       }
     });
   });
+
+  group('har maut ka apna andaaz', () {
+    Level flat({
+      List<Rect> spikes = const [],
+      List<Rect> traps = const [],
+      List<Saw> saws = const [],
+      List<Pendulum> pendulums = const [],
+      List<Rock> rocks = const [],
+    }) => Level(
+      solids: const [Rect.fromLTWH(-1000, 400, 4000, 200)],
+      spikes: spikes,
+      traps: traps,
+      saws: saws,
+      pendulums: pendulums,
+      rocks: rocks,
+      checkpoints: const [Offset(500, 400)],
+      goalX: 2900,
+    );
+
+    World runInto(Level level, {double x = 500}) {
+      final w = World(level)..pos = Offset(x, 400);
+      for (var i = 0; i < 120 && w.state == PlayerState.alive; i++) {
+        w.update(1 / 60, Input());
+      }
+      return w;
+    }
+
+    test('har khatra apni qism ki maut deta hai', () {
+      expect(
+        runInto(flat(spikes: [const Rect.fromLTWH(490, 384, 20, 16)]))
+            .deathKind,
+        DeathKind.spike,
+      );
+      final trapped = runInto(
+        flat(traps: [const Rect.fromLTWH(490, 390, 34, 10)]),
+      );
+      expect(trapped.deathKind, DeathKind.trap);
+      expect(trapped.closedTrap, 0); // shikanja band hua
+      expect(
+        runInto(flat(saws: [const Saw(500, 370, range: 0)])).deathKind,
+        DeathKind.saw,
+      );
+      expect(
+        runInto(flat(rocks: [const Rock(500, 0)])).deathKind,
+        DeathKind.rock,
+      );
+    });
+
+    test('bhaari lakkar hawa mein uchhaal kar door phenkta hai, jism zameen pe aa kar rukta hai', () {
+      // Lakkar neeche se tezi se guzar raha hai (phase 0 pe sab se tez)
+      final w = World(
+        flat(pendulums: [const Pendulum(Offset(500, 200), 175, speed: 2)]),
+      )..pos = const Offset(500, 400);
+      w.update(1 / 60, Input());
+      expect(w.deathKind, DeathKind.pendulum);
+      expect(w.bodyLanded, isFalse); // hawa mein
+      w.update(2.0, Input());
+      expect(w.bodyLanded, isTrue);
+      expect(w.pos.dy, 400); // zameen pe
+      expect((w.pos.dx - 500).abs(), greaterThan(150));
+    });
+
+    test('lakkar (bhaari) saw (halki) se zyada door phenkta hai', () {
+      final log = World(
+        flat(pendulums: [const Pendulum(Offset(500, 200), 175, speed: 2)]),
+      )..pos = const Offset(500, 400);
+      final saw = World(flat(saws: [const Saw(470, 370, range: 0)]))
+        ..pos = const Offset(500, 400);
+      for (final w in [log, saw]) {
+        w.update(1 / 60, Input());
+        w.update(2.5, Input());
+      }
+      expect((log.pos.dx - 500).abs(), greaterThan((saw.pos.dx - 500).abs()));
+    });
+
+    test('lambi maut ka manzar pura dikhta hai (aag zyada der)', () {
+      const level = Level(
+        solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+        spikes: [],
+        saws: [],
+        fires: [Rect.fromLTWH(490, 384, 30, 16)],
+        checkpoints: [Offset(300, 400)], // aag se door
+        goalX: 2900,
+      );
+      final w = World(level)
+        ..pos = const Offset(500, 400)
+        ..update(1 / 60, Input());
+      expect(w.deathKind, DeathKind.burn);
+      w.update(2.6, Input());
+      expect(w.state, PlayerState.dead); // ab bhi jal raha hai
+      w.update(1.0, Input());
+      expect(w.state, PlayerState.alive);
+    });
+  });
 }
 
 void expectJumpable(Level level) {

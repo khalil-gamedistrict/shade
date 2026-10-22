@@ -111,16 +111,11 @@ class WorldPainter extends CustomPainter {
       if (f.right < camX - 80 || f.left > camX + viewW + 80) continue;
       drawFire(canvas, f, t);
     }
-    for (final trap in world.level.traps) {
-      _trap(canvas, trap);
+    for (var i = 0; i < world.level.traps.length; i++) {
+      _trap(canvas, world.level.traps[i], closed: world.closedTrap == i);
     }
     for (final p in world.level.pendulums) {
       _pendulum(canvas, p);
-    }
-    for (var i = 0; i < world.level.rocks.length; i++) {
-      if (world.rockState[i] == 0) continue; // abhi oopar chhupa hai
-      final rock = world.level.rocks[i];
-      _rock(canvas, Offset(rock.x, world.rockY[i]), rock.radius, i);
     }
     for (final c in world.level.checkpoints.skip(1)) {
       _lamp(
@@ -133,6 +128,12 @@ class WorldPainter extends CustomPainter {
     extra?.call(canvas);
     _hunters(canvas, camX, viewW);
     _player(canvas);
+    // Patthar player ke baad — neeche dabi laash patthar ke neeche dikhe
+    for (var i = 0; i < world.level.rocks.length; i++) {
+      if (world.rockState[i] == 0) continue; // abhi oopar chhupa hai
+      final rock = world.level.rocks[i];
+      _rock(canvas, Offset(rock.x, world.rockY[i]), rock.radius, i);
+    }
     _spears(canvas);
     _splashes(canvas);
     canvas.restore();
@@ -316,7 +317,45 @@ class WorldPainter extends CustomPainter {
   }
 
   /// Shikanja: zameen pe khula jabra, nukeele daant
-  void _trap(Canvas canvas, Rect r) {
+  void _trap(Canvas canvas, Rect r, {bool closed = false}) {
+    if (closed) {
+      // Band jabre: dono taraf se oopar uth kar beech mein mile, daant aapas mein phanse hue
+      final c = Offset(r.center.dx, r.bottom - 1);
+      final jaws = Path()
+        ..moveTo(r.left - 4, r.bottom)
+        ..lineTo(r.right + 4, r.bottom)
+        ..lineTo(r.right + 4, r.bottom - 3)
+        ..lineTo(r.left - 4, r.bottom - 3)
+        ..close();
+      for (final side in [-1.0, 1.0]) {
+        jaws.addArc(
+          Rect.fromCenter(center: c, width: r.width * 0.9, height: 26),
+          side < 0 ? pi : -pi / 2,
+          pi / 2,
+        );
+        for (var k = 0; k < 4; k++) {
+          final y = c.dy - 3 - k * 3;
+          jaws
+            ..moveTo(c.dx + side * 1, y)
+            ..lineTo(c.dx - side * 3, y - 1.5)
+            ..lineTo(c.dx + side * 1, y - 3)
+            ..close();
+        }
+      }
+      canvas.drawPath(jaws, _black);
+      canvas.drawPath(
+        Path()..addArc(
+          Rect.fromCenter(center: c, width: r.width * 0.9, height: 26),
+          pi,
+          pi,
+        ),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.4
+          ..color = const Color(0xFF070707),
+      );
+      return;
+    }
     final path = Path()
       ..moveTo(r.left - 4, r.bottom)
       ..lineTo(r.right + 4, r.bottom)
@@ -475,6 +514,24 @@ class WorldPainter extends CustomPainter {
     final dir = world.facingRight ? 1.0 : -1.0;
     if (world.state == PlayerState.dead) {
       final t = world.time - world.deathTime;
+      final wind = world.windAt(world.pos.dx);
+      void dying({
+        double? spear,
+        double raise = 0,
+        double speed = 1,
+        double? from,
+      }) => drawDying(
+        canvas,
+        look: Look.hero,
+        foot: world.pos,
+        dir: dir,
+        fallDir: world.fallDir,
+        t: from ?? t * speed,
+        time: world.time,
+        wind: wind,
+        spear: spear,
+        raise: raise,
+      );
       switch (world.deathKind) {
         case DeathKind.fall || DeathKind.drown:
           drawFalling(
@@ -484,8 +541,22 @@ class WorldPainter extends CustomPainter {
             dir: dir,
             time: world.time,
           );
-        default:
-          drawDying(
+        case DeathKind.pendulum || DeathKind.saw:
+          // Takkar se hawa mein gholay; zameen pe aa kar let'na aur tarapna
+          if (!world.bodyLanded) {
+            drawTumble(
+              canvas,
+              look: Look.hero,
+              foot: world.pos,
+              dir: dir,
+              angle: world.bodyAngle,
+              time: world.time,
+            );
+          } else {
+            dying(from: 0.7 + world.time - world.landTime);
+          }
+        case DeathKind.burn:
+          drawBurning(
             canvas,
             look: Look.hero,
             foot: world.pos,
@@ -493,8 +564,18 @@ class WorldPainter extends CustomPainter {
             fallDir: world.fallDir,
             t: t,
             time: world.time,
-            wind: world.windAt(world.pos.dx),
+            wind: wind,
+            fire: (c, r, time, size) =>
+                drawFire(c, r, time, size: size, wind: wind),
           );
+        case DeathKind.spear:
+          dying(spear: world.spearAngle);
+        case DeathKind.rock:
+          dying(speed: 3); // bhaari patthar — foran dab gaya
+        case DeathKind.spike:
+          dying(raise: 9); // kaanton ke oopar
+        case DeathKind.trap || DeathKind.caught:
+          dying();
       }
       return;
     }

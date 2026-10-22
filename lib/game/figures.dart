@@ -295,6 +295,8 @@ void drawDying(
   required double t,
   required double time,
   double wind = 0,
+  double? spear, // jism mein gare neze ka zawiya (duniya ke hisaab se)
+  double raise = 0, // let'ne ke baad kitna oopar (kaanton pe)
 }) {
   const jolt = 0.2, impact = 0.7;
   // Gira kitna: jhatke ke baad tezi pakarta hua (t^2), aakhir mein 90° — zameen pe let gaya
@@ -314,7 +316,17 @@ void drawDying(
   double jerk(double freq, double seed) => sin(time * freq + seed) * writhe;
 
   final FigurePose pose;
-  if (t < jolt) {
+  if (spear != null && t < impact) {
+    // Neza laga: dono haath seene pe, ghutne jawab dete hain
+    final k = (t / jolt).clamp(0.0, 1.0);
+    pose = FigurePose(
+      (0.35 * k, -1.0 * k),
+      (-0.2 * k, -0.8 * k),
+      (0.9, 2.1),
+      (0.6, 2.3),
+      lean: 0.2 * k,
+    );
+  } else if (t < jolt) {
     // Jhatka: jism akarta hai, baazu oopar uchhalte hain, ghutne jawab dete hain
     final k = t / jolt;
     pose = FigurePose(
@@ -347,7 +359,7 @@ void drawDying(
 
   canvas.save();
   // Let'te hue jism ki motaai — thora oopar uthao taake aadha zameen mein na dhanse
-  canvas.translate(foot.dx, foot.dy - 4 * f);
+  canvas.translate(foot.dx, foot.dy - 4 * f - raise * f);
   canvas.rotate(angle);
   drawFigure(
     canvas,
@@ -362,7 +374,139 @@ void drawDying(
     pose: pose,
     eyesClosed: t > impact + 0.15,
   );
+  if (spear != null) {
+    // Seene mein gara neza — jism ke saath ghoomta hai
+    final a = spear - angle;
+    final d = Offset(cos(a), sin(a));
+    const at = Offset(0, -28);
+    canvas.drawLine(at - d * 30, at + d * 9, _stroke(1.7));
+    final n = Offset(-d.dy, d.dx);
+    final tip = at + d * 9;
+    canvas.drawPath(
+      Path()..addPolygon([
+        tip + d * 5,
+        tip - d * 2 + n * 2.4,
+        tip - d * 2 - n * 2.4,
+      ], true),
+      _fill,
+    );
+  }
   canvas.restore();
+}
+
+/// Bhaari takkar ke baad hawa mein: gholay khata, haath paon phaile, kamar ke gird ghoomta
+void drawTumble(
+  Canvas canvas, {
+  required Look look,
+  required Offset foot,
+  required double dir,
+  required double angle,
+  required double time,
+}) {
+  const center = Offset(0, -22);
+  final w = sin(time * 15);
+  canvas.save();
+  canvas.translate(foot.dx + center.dx, foot.dy + center.dy);
+  canvas.rotate(angle);
+  canvas.translate(-center.dx, -center.dy);
+  drawFigure(
+    canvas,
+    look: look,
+    foot: Offset.zero,
+    dir: dir,
+    phase: 0,
+    moving: false,
+    inAir: true,
+    time: time,
+    pose: FigurePose(
+      (0.7 + w * 0.3, -0.5),
+      (-0.6 - w * 0.3, -0.3),
+      (2.1 + w * 0.3, 0.4),
+      (-1.8 - w * 0.3, 0.3),
+    ),
+  );
+  canvas.restore();
+}
+
+/// Aag mein jalna: kapron mein aag, ghabra kar haath hilata ladkhadata hai, phir girta hai aur
+/// zameen pe jalta hua tarapta hai — aag dheere dheere bujhti hai, dhuaan uthta hai
+void drawBurning(
+  Canvas canvas, {
+  required Look look,
+  required Offset foot,
+  required double dir,
+  required double fallDir,
+  required double t,
+  required double time,
+  double wind = 0,
+  required void Function(Canvas, Rect, double, double) fire,
+}) {
+  const panic = 1.2;
+  if (t < panic) {
+    final x = foot + Offset(sin(t * 7) * 5, 0);
+    drawFigure(
+      canvas,
+      look: look,
+      foot: x,
+      dir: dir,
+      phase: t * 16,
+      moving: true,
+      inAir: false,
+      time: time,
+      wind: wind,
+      pose: FigurePose(
+        (sin(t * 16) * 0.6, -max(0.0, cos(t * 16)) * 1.1),
+        (-sin(t * 16) * 0.6, -max(0.0, -cos(t * 16)) * 1.1),
+        (2.7 + sin(t * 13) * 0.5, 0.4 + sin(t * 17) * 0.3),
+        (2.4 + cos(t * 11) * 0.5, 0.5),
+        lean: -0.08,
+      ),
+    );
+    // Jism pe aag — kamar se sar tak
+    fire(canvas, Rect.fromLTWH(x.dx - 9, x.dy - 30, 18, 12), time, 0.6);
+    fire(canvas, Rect.fromLTWH(x.dx - 6, x.dy - 6, 12, 6), time + 0.5, 0.35);
+    return;
+  }
+  final k = t - panic;
+  drawDying(
+    canvas,
+    look: look,
+    foot: foot,
+    dir: dir,
+    fallDir: fallDir,
+    t: k,
+    time: time,
+    wind: wind,
+  );
+  // Let'e hue jism pe aag, waqt ke saath bujhti hui
+  final fade = (1 - (k - 1.2) / 1.4).clamp(0.0, 1.0);
+  if (fade > 0) {
+    final lying = (k / 0.7).clamp(0.0, 1.0);
+    for (var j = 1; j <= 3; j++) {
+      final along = Offset(fallDir * j * 13 * lying, -j * 13 * (1 - lying) - 4);
+      fire(
+        canvas,
+        Rect.fromLTWH(foot.dx + along.dx - 7, foot.dy + along.dy - 4, 14, 6),
+        time + j,
+        0.45 * fade,
+      );
+    }
+  }
+  // Dhuaan
+  for (var j = 0; j < 4; j++) {
+    final rise = (time * 22 + j * 30) % 110;
+    canvas.drawCircle(
+      foot +
+          Offset(
+            fallDir * 20 + sin(time + j) * 6 + wind * rise * 0.4,
+            -10 - rise,
+          ),
+      2.5 + rise * 0.06,
+      Paint()
+        ..color = const Color(0xFF3A3C3D)
+            .withValues(alpha: 0.22 * (1 - rise / 110) * min(1, k)),
+    );
+  }
 }
 
 /// Doobna/gaddhay mein girna: haath paon chalaata hua neeche jata hai

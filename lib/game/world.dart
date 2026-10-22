@@ -72,7 +72,18 @@ class Pendulum {
 enum Mood { forest, fire, river, cliffs, home }
 
 /// Maut kaise hui — girne ka andaaz is pe depend karta hai
-enum DeathKind { fall, drown, hazard, spear, caught, burn }
+enum DeathKind {
+  fall, // gaddhay mein
+  drown, // paani mein
+  spike, // kaanton pe
+  trap, // shikanje mein paon
+  pendulum, // bhaari jhoolta lakkar — door uchhal kar
+  saw, // saw ki takkar — thora uchhal kar
+  rock, // oopar se patthar — neeche dab gaya
+  spear, // neza laga
+  caught, // shikaariyon ne pakar liya
+  burn, // aag mein jal gaya
+}
 
 /// Peechha: player [startX] paar kare to jangli shikaari peeche se daurte aate hain
 class Chase {
@@ -392,9 +403,16 @@ class World {
   int? _standingOn; // kis hilte platform pe khara hai
 
   // Maut ka manzar: kaise mara, kis taraf gira, kab
-  DeathKind deathKind = DeathKind.hazard;
+  DeathKind deathKind = DeathKind.spike;
   double fallDir = 1; // +1 = right ki taraf gira
   double deathTime = 0;
+  // Takkar ke baad jism ki physics: hawa mein uchhalna, gholay khana, zameen pe ghisatna
+  Offset bodyVel = Offset.zero;
+  double bodyAngle = 0, bodySpin = 0;
+  bool bodyLanded = true;
+  double landTime = 0;
+  double spearAngle = 0; // jism mein gare neze ka zawiya
+  int? closedTrap; // kaun sa shikanja band hua
 
   // Peechha
   static const hunterGaps = [
@@ -517,7 +535,10 @@ class World {
       } else if (deathKind == DeathKind.drown) {
         vy = min(vy + gravity * dt, 40);
         pos += Offset(0, vy * dt);
+      } else {
+        _updateBody(dt);
       }
+      _updateRocks(dt); // jo patthar gir raha tha woh zameen tak gire
       if (deadTimer <= 0) _respawn();
       return;
     }
@@ -615,14 +636,24 @@ class World {
       if (!sp.stuck && r.contains(Offset(sp.x, sp.y))) {
         events.add(GameEvent.spearHit);
         fallDir = sp.vx >= 0 ? 1 : -1; // neze ke zor se usi taraf
+        spearAngle = sp.angle;
+        bodyVel = Offset(
+          fallDir * 70,
+          0,
+        ); // halka sa dhakka — do qadam ladkhadata hai
         spears.remove(sp);
         return DeathKind.spear;
       }
     }
-    fallDir = -facing; // baaqi khatre: jhatke se peeche ki taraf
+    fallDir = facing; // aag, kaante, shikanja: aagay ki taraf
     if (level.fires.any(r.overlaps)) return DeathKind.burn;
-    if (level.spikes.any(r.overlaps)) return DeathKind.hazard;
-    if (level.traps.any(r.overlaps)) return DeathKind.hazard;
+    if (level.spikes.any(r.overlaps)) return DeathKind.spike;
+    for (var i = 0; i < level.traps.length; i++) {
+      if (level.traps[i].overlaps(r)) {
+        closedTrap = i;
+        return DeathKind.trap;
+      }
+    }
     bool hitsCircle(Offset c, double radius) {
       final nearest = Offset(
         c.dx.clamp(r.left, r.right),
@@ -633,21 +664,34 @@ class World {
 
     for (final p in level.pendulums) {
       if (hitsCircle(p.bobAt(time), p.radius)) {
-        fallDir = cos(time * p.speed + p.phase) >= 0
-            ? 1
-            : -1; // lakkar jidhar ja raha, udhar dhakka
-        return DeathKind.hazard;
+        // Bhaari lakkar: jitna tez jhool raha tha, utni door phenkta hai
+        final swing =
+            p.amplitude *
+            p.speed *
+            cos(time * p.speed + p.phase); // radian/second
+        final bobVx = swing * p.length * cos(p.angleAt(time));
+        fallDir = bobVx >= 0 ? 1 : -1;
+        bodyVel = Offset(fallDir * (200 + bobVx.abs() * 0.9), -300);
+        bodySpin = fallDir * 9;
+        return DeathKind.pendulum;
       }
     }
     for (var i = 0; i < level.rocks.length; i++) {
       final rock = level.rocks[i];
       if (rockState[i] == 1 &&
           hitsCircle(Offset(rock.x, rockY[i]), rock.radius)) {
-        return DeathKind.hazard;
+        return DeathKind.rock;
       }
     }
     for (final saw in level.saws) {
-      if (hitsCircle(saw.centerAt(time), saw.radius)) return DeathKind.hazard;
+      final c = saw.centerAt(time);
+      if (hitsCircle(c, saw.radius)) {
+        // Saw halki hai: kam door uchhalta hai, saw se door ki taraf
+        fallDir = pos.dx >= c.dx ? 1 : -1;
+        bodyVel = Offset(fallDir * 190, -210);
+        bodySpin = fallDir * 7;
+        return DeathKind.saw;
+      }
     }
     return null;
   }
@@ -660,7 +704,53 @@ class World {
     deaths++;
     hunterMoving = false;
     vx = 0;
+    bodyAngle = 0;
+    // Jo takkar se uchhla woh hawa mein hai; baaqi zameen pe
+    bodyLanded = !(kind == DeathKind.pendulum || kind == DeathKind.saw);
+    landTime = time;
+    if (kind != DeathKind.pendulum &&
+        kind != DeathKind.saw &&
+        kind != DeathKind.spear) {
+      bodyVel = Offset.zero;
+    }
+    // Lambi maut (aag, uchhalna) ka manzar pura dikhe
+    deadTimer = switch (kind) {
+      DeathKind.burn => 3.4,
+      DeathKind.pendulum || DeathKind.saw => 3.0,
+      _ => respawnDelay,
+    };
     events.add(GameEvent.death);
+  }
+
+  /// Maut ke baad jism: hawa mein ho to gravity aur gholay, zameen pe aaye to ghisat kar ruk jaye
+  void _updateBody(double dt) {
+    if (bodyVel == Offset.zero && bodyLanded) return;
+    if (!bodyLanded) {
+      bodyVel += Offset(0, gravity * dt);
+      bodyAngle += bodySpin * dt;
+    } else {
+      bodyVel = Offset(bodyVel.dx * exp(-5 * dt), 0); // ghisatte hue dheema
+      if (bodyVel.dx.abs() < 2) bodyVel = Offset.zero;
+    }
+    final next = pos + bodyVel * dt;
+    // Deewar se takra kar ruk jaye
+    final blocked = solidsNow().any(
+      (s) => s.contains(next + const Offset(0, -10)),
+    );
+    pos = blocked ? Offset(pos.dx, next.dy) : next;
+    if (blocked) bodyVel = Offset(0, bodyVel.dy);
+    final ground = _groundBelow(pos.dx);
+    if (!bodyLanded &&
+        bodyVel.dy > 0 &&
+        pos.dy >= ground &&
+        ground < level.deathY) {
+      pos = Offset(pos.dx, ground);
+      bodyLanded = true;
+      landTime = time;
+      bodyVel = Offset(bodyVel.dx * 0.6, 0);
+    } else if (bodyLanded && pos.dy < ground - 1) {
+      bodyLanded = false; // kinare se gir gaya
+    }
   }
 
   void _updateRocks(double dt) {
@@ -755,6 +845,9 @@ class World {
   }
 
   void _respawn() {
+    closedTrap = null;
+    bodyVel = Offset.zero;
+    bodyLanded = true;
     pos = level.checkpoints[checkpoint];
     vx = vy = 0;
     _standingOn = null;
