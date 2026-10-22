@@ -1,4 +1,4 @@
-// Chapters ki khaas cheezen: aag, jalti jhonpriyan, darya, tairte lakkar, rassi ka pul.
+// Chapters ki khaas cheezen: aag, jalti jhonpriyan, darya, kashtiyan, rassi ka pul.
 // Limbo jaisa: sab kaala silhouette — sirf aag asli rang mein (narangi), taake andhere mein chamke.
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -277,28 +277,107 @@ void drawWater(Canvas canvas, double left, double right, double y, double t) {
   }
 }
 
-/// Tairta lakkar: chhaal ki lakeerein, kinaron pe gol kate hue sire
-void drawLog(Canvas canvas, Rect r) {
-  canvas.drawRRect(
-    RRect.fromRectAndRadius(r, Radius.circular(r.height / 2)),
-    _fill,
+/// Lakri ki kashti (bagal se): dono sire oopar mure aur nukeele, gol pait, kinare ki patti, takhton ki
+/// lakeerein, beech ki patti, aur paani mein dooba chappu. Lehron ke saath halki jhoolti hai.
+/// [r] = kashti ki thos sateh (jis pe hero khara hota hai), [waterY] = paani ki sateh.
+void drawBoat(Canvas canvas, Rect r, double t, double waterY, int seed) {
+  final c = Offset(r.center.dx, r.top);
+  final tilt = sin(t * 1.3 + seed) * 0.035; // lehron pe jhoolna
+  // Paani ki chhoti lehrein dono taraf
+  final ripple = Paint()
+    ..color = const Color(0x77C8CDD0)
+    ..strokeWidth = 1
+    ..style = PaintingStyle.stroke;
+  for (var k = 0; k < 3; k++) {
+    final u = (t * 0.8 + k / 3) % 1;
+    for (final side in [-1.0, 1.0]) {
+      final x = c.dx + side * (r.width / 2 + 6 + u * 22);
+      canvas.drawLine(
+        Offset(x, waterY + 1),
+        Offset(x + side * 8 * (1 - u), waterY + 1),
+        ripple..color = Color.fromRGBO(200, 205, 208, 0.45 * (1 - u)),
+      );
+    }
+  }
+
+  canvas.save();
+  canvas.translate(c.dx, c.dy);
+  canvas.rotate(tilt);
+  final hw = r.width / 2;
+  final keel = waterY - r.top + 5; // pait thora sa paani mein
+  // Pait: peeche (baayen) ki nok, kinara neeche aata hai, aage (daayen) ki nok zyada oonchi;
+  // neeche chhichhla gol pait jo dono siron pe nukeela ho kar milta hai
+  final hull = Path()
+    ..moveTo(-hw - 8, -10)
+    ..quadraticBezierTo(-hw + 6, -3, -hw + 18, -2)
+    ..lineTo(hw - 18, -2)
+    ..quadraticBezierTo(hw - 2, -3, hw + 10, -13)
+    ..quadraticBezierTo(hw + 6, keel * 0.35, hw - 26, keel)
+    ..lineTo(-hw + 24, keel)
+    ..quadraticBezierTo(-hw - 2, keel * 0.35, -hw - 8, -10)
+    ..close();
+  // Gehri lakri (silhouette mein halka sa bhoora asar)
+  canvas.drawPath(
+    hull,
+    Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF2A211A), Color(0xFF0C0907)],
+      ).createShader(Rect.fromLTRB(-hw - 10, -14, hw + 12, keel)),
   );
-  final bark = Paint()
-    ..color = const Color(0xFF2A2A2A)
-    ..strokeWidth = 0.8;
-  for (var x = r.left + 10; x < r.right - 10; x += 13) {
-    canvas.drawLine(Offset(x, r.top + 3), Offset(x + 7, r.top + 3), bark);
-    canvas.drawLine(
-      Offset(x + 4, r.bottom - 4),
-      Offset(x + 11, r.bottom - 4),
-      bark,
+  canvas.save();
+  canvas.clipPath(hull);
+  // Takhton ki halki lakeerein, kinare ki golai ke saath
+  final plank = Paint()
+    ..color = const Color(0x2EA88A6A)
+    ..strokeWidth = 0.8
+    ..style = PaintingStyle.stroke;
+  for (final y in [keel * 0.55, keel * 0.85]) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(-hw - 6, y - 7)
+        ..quadraticBezierTo(0, y + 1, hw + 8, y - 8),
+      plank,
     );
   }
-  canvas.drawCircle(
-    Offset(r.right - r.height / 2, r.center.dy),
-    r.height * 0.32,
-    Paint()..color = const Color(0xFF2A2A2A),
+  // Beech ki patti
+  canvas.drawPath(
+    Path()
+      ..moveTo(-hw - 8, 2)
+      ..quadraticBezierTo(0, 9, hw + 10, 1)
+      ..lineTo(hw + 10, 4.5)
+      ..quadraticBezierTo(0, 12.5, -hw - 8, 5.5)
+      ..close(),
+    Paint()..color = const Color(0x66905A3A),
   );
+  canvas.restore();
+  // Kinare ki patti (oopar ki roshni)
+  canvas.drawPath(
+    Path()
+      ..moveTo(-hw - 8, -10)
+      ..quadraticBezierTo(-hw + 6, -3, -hw + 18, -2)
+      ..lineTo(hw - 18, -2)
+      ..quadraticBezierTo(hw - 2, -3, hw + 10, -13),
+    Paint()
+      ..color = const Color(0x88C7AE8E)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round,
+  );
+  // Chappu: kinare pe tika, paani mein dooba
+  final oar = Paint()
+    ..color = const Color(0xFF1C1610)
+    ..strokeWidth = 2
+    ..strokeCap = StrokeCap.round;
+  final grip = Offset(-hw * 0.25, -7);
+  final blade = Offset(-hw * 0.9 - 14, keel + 10);
+  canvas.drawLine(grip, blade, oar);
+  canvas.drawOval(
+    Rect.fromCenter(center: blade, width: 6, height: 12),
+    Paint()..color = const Color(0xFF1C1610),
+  );
+  canvas.restore();
 }
 
 /// Rassi ka pul: takhte, dono taraf jhoolti rassiyan, kinaron pe khambe

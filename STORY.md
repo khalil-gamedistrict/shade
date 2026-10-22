@@ -26,7 +26,7 @@ Kahani bina alfaaz ke dikhayi jaati hai (Limbo ki tarah): silhouettes, awaazein,
 |---|---|---|---|
 | 1 | The Hunt | Jungle mein shikaar — achanak khud shikaar ban jata hai | Aasaan jumps, pehli rukawatein, peechha shuru |
 | 2 | Ashes | Jalta hua gaon | Aag ke sholay, girte jalte shehteer, jalti jhonpriyan, dhuaan |
-| 3 | The River | Darya paar karna | Pattharon pe kood, tairte lakkar, paani mein gire to doob gaye |
+| 3 | The River | Darya paar karna | Pattharon pe kood, tairti kashtiyan, paani mein gire to doob gaye |
 | 4 | The Storm | Toofan | Tez hawa, moosla dhaar baarish, bijli, hilte platform |
 | 5 | The Cliffs | Oonchi chattanen | Rassi ka pul, gehri khaiyan, saamne se tez hawa |
 | 6 | Homecoming | Shikaariyon se bach kar apne logon tak | Bhari baarish, aakhri mushkil hissa; jeet pe "The End" |

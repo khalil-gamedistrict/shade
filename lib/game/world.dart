@@ -26,14 +26,14 @@ class Saw {
 class Mover {
   final Rect base;
   final double dx, dy, speed, phase;
-  final bool log; // darya mein tairta lakkar (rassi wala takhta nahi)
+  final bool boat; // darya mein kashti (rassi wala takhta nahi)
   const Mover(
     this.base, {
     this.dx = 0,
     this.dy = 0,
     this.speed = 1,
     this.phase = 0,
-    this.log = false,
+    this.boat = false,
   });
 
   Rect rectAt(double t) {

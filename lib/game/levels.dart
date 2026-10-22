@@ -41,7 +41,7 @@ Level ashes() => const Level(
   wind: Profile([(0, 0.3), (3100, 0.4)]),
 );
 
-/// 3 · The River — darya: pattharon pe kood, tairte lakkar, paani mein gire to doob gaye
+/// 3 · The River — darya: pattharon pe kood, tairti kashtiyan, paani mein gire to doob gaye
 Level river() => const Level(
   mood: Mood.river,
   waterY: 432,
@@ -51,7 +51,7 @@ Level river() => const Level(
     Rect.fromLTWH(690, 396, 100, 204), // patthar
     // paani 790–880
     Rect.fromLTWH(880, 400, 420, 200),
-    // bara darya 1300–1860: do tairte lakkar aur beech mein patthar
+    // bara darya 1300–1860: do tairti kashtiyan aur beech mein patthar
     Rect.fromLTWH(1530, 400, 70, 200),
     Rect.fromLTWH(1860, 400, 540, 200),
     // paani 2400–2490
@@ -63,7 +63,7 @@ Level river() => const Level(
       dx: 40,
       dy: 3,
       speed: 0.8,
-      log: true,
+      boat: true,
     ),
     Mover(
       Rect.fromLTWH(1660, 412, 90, 14),
@@ -71,7 +71,7 @@ Level river() => const Level(
       dy: 3,
       speed: 0.9,
       phase: 1.5,
-      log: true,
+      boat: true,
     ),
   ],
   spikes: [Rect.fromLTWH(1050, 384, 48, 16), Rect.fromLTWH(2050, 384, 48, 16)],

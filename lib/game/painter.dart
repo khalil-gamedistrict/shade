@@ -132,7 +132,17 @@ class WorldPainter extends CustomPainter {
       _saw(canvas, saw);
     }
     for (final m in world.level.movers) {
-      m.log ? drawLog(canvas, m.rectAt(t)) : _mover(canvas, m.rectAt(t));
+      if (m.boat) {
+        drawBoat(
+          canvas,
+          m.rectAt(t),
+          t,
+          level.waterY ?? m.rectAt(t).bottom,
+          level.movers.indexOf(m),
+        );
+      } else {
+        _mover(canvas, m.rectAt(t));
+      }
     }
     for (final f in level.fires) {
       if (f.right < camX - 80 || f.left > camX + viewW + 80) continue;
