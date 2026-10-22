@@ -58,6 +58,9 @@ Level hunt() {
   return Level(
     terrain: const [a, b],
     pools: const [Pool(808, 985, 402), Pool(2004, 2114, 406, deep: true)],
+    shields: [
+      Offset(740, y(740)),
+    ], // teele se utarte hue raaste mein pari dhaal
     solids: const [
       Rect.fromLTWH(2420, 400, 340, 200), // aakhri zameen (chhupne ka gaddha)
     ],

@@ -38,6 +38,7 @@ void drawFigure(
   double scale = 1,
   FigurePose? pose,
   bool eyesClosed = false,
+  int backShield = 0, // peeth pe dhaal: kitne neze aur rok sakti hai (0 = nahi); kam = zyada daraarein
 }) {
   canvas.save();
   canvas.translate(foot.dx, foot.dy);
@@ -92,6 +93,38 @@ void drawFigure(
   canvas.rotate(dir * lean);
   canvas.translate(-hip.dx, -hip.dy);
 
+  if (backShield > 0) {
+    // Peeth pe bandhi gol dhaal (chamra/lakdi): halka kinara taake kaale jism ke saath bhi dikhe
+    final c = Offset(-dir * 6, -28 + bob * 0.5);
+    canvas.drawCircle(c, 9.5, _fill);
+    canvas.drawCircle(
+      c,
+      9.5,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1
+        ..color = const Color(0x77D8D8D8),
+    );
+    canvas.drawCircle(c, 2, Paint()..color = const Color(0x66D8D8D8));
+    // Har roke hue neze ki daraar
+    final crack = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..color = const Color(0xAAE0E0E0);
+    for (var k = 0; k < 3 - backShield; k++) {
+      final a = 0.8 + k * 2.1;
+      final p1 = c + Offset(cos(a), sin(a)) * 2.5;
+      final p2 = c + Offset(cos(a + 0.3), sin(a + 0.3)) * 6;
+      final p3 = c + Offset(cos(a - 0.1), sin(a - 0.1)) * 9.5;
+      canvas.drawPath(
+        Path()
+          ..moveTo(p1.dx, p1.dy)
+          ..lineTo(p2.dx, p2.dy)
+          ..lineTo(p3.dx, p3.dy),
+        crack,
+      );
+    }
+  }
   final backHand = _limb(canvas, shoulder, armB, 7.5, 7, 2.5, dir);
   if (look == Look.shield) {
     // Gol dhaal peeche wale baazu pe

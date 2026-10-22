@@ -16,6 +16,15 @@ class Sound {
     ),
     GameEvent.wade: (['wade1', 'wade2', 'wade3', 'wade4'], 0.45),
     GameEvent.jump: (['jump'], 0.5),
+    GameEvent.shieldPickup: (['rustle'], 0.5),
+    GameEvent.shieldBlock: (
+      ['spear_stick'],
+      1.0,
+    ), // neza lakdi/chamre ki dhaal pe
+    GameEvent.shieldBreak: (
+      ['branch_crack'],
+      1.0,
+    ), // dhaal chatak kar toot'ti hai
     GameEvent.land: (['land'], 0.55),
     GameEvent.checkpoint: (['checkpoint'], 0.45),
     GameEvent.win: (['win'], 0.7),

@@ -134,8 +134,10 @@ class Grass {
       final bump = (sin(x * 0.11) * 0.6 + sin(x * 0.37 + 1.7) * 0.4 + 1) * 1.3;
       path.lineTo(x, yAt(x) - bump);
     }
-    path
-      ..lineTo(b, yAt(b) + 2)
-      ..close();
+    // Wapas bhi sath ke saath (seedhi lakeer se band karein to dhalan pe kaala tikona banta hai)
+    for (var x = b; x >= a; x -= 3) {
+      path.lineTo(x, yAt(x) + 2);
+    }
+    path.close();
   }
 }

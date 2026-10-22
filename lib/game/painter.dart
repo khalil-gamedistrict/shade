@@ -169,6 +169,7 @@ class WorldPainter extends CustomPainter {
     }
     extra?.call(canvas);
     _hunters(canvas, camX, viewW);
+    _shields(canvas);
     _player(canvas);
     _pools(
       canvas,
@@ -762,6 +763,7 @@ class WorldPainter extends CustomPainter {
         time: world.time,
         wind: world.windAt(world.pos.dx),
         pose: pose,
+        backShield: world.shield,
       );
       return;
     }
@@ -850,6 +852,8 @@ class WorldPainter extends CustomPainter {
       }
       return;
     }
+    // Dhaal uthana: daurte daurte jhuk kar zameen se utha li (pehle pal mein haath neeche)
+    final grab = world.time - world.pickupTime;
     drawFigure(
       canvas,
       look: Look.hero,
@@ -860,7 +864,94 @@ class WorldPainter extends CustomPainter {
       inAir: !world.grounded,
       time: world.time,
       wind: world.windAt(world.pos.dx),
+      pose: grab < 0.32 ? _scoop : null,
+      backShield: grab < 0.18 ? 0 : world.shield,
     );
+    if (grab < 0.18) {
+      // Haath mein dhaal — abhi peeth pe nahi gayi
+      final d = world.facingRight ? 1.0 : -1.0;
+      _shieldDisk(canvas, world.pos + Offset(d * 16, -10 - grab * 60), 0.6);
+    }
+  }
+
+  static const _scoop = FigurePose(
+    (0.75, -1.3),
+    (-0.6, -0.5),
+    (0.45, 0.1),
+    (-0.4, 0.6),
+    lean: 0.55,
+  );
+
+  /// Gol dhaal (chamra tana hua, beech mein ubhaar), [tilt] radian jhuki
+  void _shieldDisk(Canvas canvas, Offset c, double tilt, {double glint = 0}) {
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(tilt);
+    final r = Rect.fromCenter(center: Offset.zero, width: 13, height: 20);
+    canvas.drawOval(r, _black);
+    canvas.drawOval(
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = Color.fromRGBO(225, 225, 225, 0.35 + glint * 0.45),
+    );
+    canvas.drawCircle(
+      Offset.zero,
+      1.8,
+      Paint()..color = const Color(0x77D8D8D8),
+    );
+    canvas.restore();
+  }
+
+  /// Raaste mein pari dhaal (chhoti chattan se tiki), halki chamak taake nazar aaye; aur toot'ti dhaal ke tukre
+  void _shields(Canvas canvas) {
+    final level = world.level;
+    for (var i = 0; i < level.shields.length; i++) {
+      if (world.shieldsTaken.contains(i)) continue;
+      final g = level.shields[i];
+      canvas.drawOval(
+        Rect.fromCenter(center: g + const Offset(7, -2), width: 14, height: 7),
+        _black,
+      );
+      final glint = (sin(world.time * 3 + i) * 0.5 + 0.5);
+      _shieldDisk(canvas, g + const Offset(1, -9), 0.45, glint: glint);
+    }
+    final dir = world.facingRight ? 1.0 : -1.0;
+    final back = world.pos + Offset(-dir * 6, -28);
+    final hit = world.time - world.shieldHitTime;
+    if (hit < 0.2) {
+      // Neza laga: chingari jaisi halki chamak
+      canvas.drawCircle(
+        back,
+        6 + hit * 40,
+        Paint()..color = Color.fromRGBO(235, 235, 235, 0.5 * (1 - hit / 0.2)),
+      );
+    }
+    final br = world.time - world.shieldBreakTime;
+    if (br < 1.2) {
+      // Tukre: idhar udhar uchhal kar girte, ghoomte
+      for (var k = 0; k < 6; k++) {
+        final a = -pi / 2 + (k - 2.5) * 0.45;
+        final v = Offset(
+          cos(a) * (60 + k * 12) * -dir,
+          sin(a) * (150 + k * 15),
+        );
+        final p = back + v * br + Offset(0, 500 * br * br);
+        canvas.save();
+        canvas.translate(p.dx, p.dy);
+        canvas.rotate(br * (6 + k));
+        canvas.drawPath(
+          Path()..addPolygon(const [
+            Offset(-3, -2),
+            Offset(4, -3),
+            Offset(2, 3),
+          ], true),
+          Paint()..color = Color.fromRGBO(10, 10, 10, 1 - br / 1.2),
+        );
+        canvas.restore();
+      }
+    }
   }
 
   /// Peeche daurte jangli shikaari

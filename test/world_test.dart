@@ -404,6 +404,61 @@ void main() {
     });
   });
 
+  group('dhaal', () {
+    World withShield() {
+      final w = World(
+        const Level(
+          solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+          spikes: [],
+          saws: [],
+          checkpoints: [Offset(100, 400)],
+          goalX: 2900,
+          shields: [Offset(200, 400)],
+        ),
+      );
+      w.update(1.2, Input()..right = true); // daurte daurte utha li
+      return w;
+    }
+
+    void throwAt(World w) {
+      w.spears.add(Spear(w.pos.dx - 60, w.pos.dy - 24, 300, 0));
+      for (var k = 0; k < 30; k++) {
+        w.update(1 / 60, Input());
+      }
+    }
+
+    test('raaste se daurte daurte uthti hai', () {
+      final w = withShield();
+      expect(w.shield, World.shieldMax);
+      expect(w.events, contains(GameEvent.shieldPickup));
+      expect(w.pos.dx, greaterThan(250)); // ruka nahi
+    });
+
+    test(
+      'teen neze rokti hai, teesre pe toot jaati hai, phir neza lagta hai',
+      () {
+        final w = withShield();
+        w.events.clear();
+        for (var k = 0; k < 3; k++) {
+          throwAt(w);
+          expect(w.state, PlayerState.alive);
+        }
+        expect(w.shield, 0);
+        expect(
+          w.events,
+          containsAll([GameEvent.shieldBlock, GameEvent.shieldBreak]),
+        );
+        throwAt(w);
+        expect(w.state, PlayerState.dead);
+        expect(w.deathKind, DeathKind.spear);
+      },
+    );
+
+    test('Chapter 1 mein raaste mein dhaal pari hai', () {
+      expect(chapters.first.level!().shields, isNotEmpty);
+    });
+  });
+
   group('peechha', () {
     Level chaseLevel() => const Level(
       solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],

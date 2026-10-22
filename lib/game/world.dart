@@ -151,6 +151,7 @@ class HunterBody {
 class Spear {
   double x, y, vx, vy, age = 0;
   bool stuck = false;
+  bool spent = false; // dhaal se takra kar gira — ab kisi ko nahi lagta
   Spear(this.x, this.y, this.vx, this.vy);
   double get angle => atan2(vy, vx);
 }
@@ -194,6 +195,8 @@ class Level {
   final double? waterY; // darya: is oonchai pe paani, gire to doob gaye
   final List<Terrain> terrain; // ooncha-neecha zameen (teelay, dhalan)
   final List<Pool> pools; // khara paani
+  final List<Offset>
+  shields; // raaste mein pari dhaal (zameen pe) — utha lo to neze rokti hai
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -219,6 +222,7 @@ class Level {
     this.waterY,
     this.terrain = const [],
     this.pools = const [],
+    this.shields = const [],
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });
@@ -360,6 +364,10 @@ class Level {
               for (final p in t.points) p + Offset(dx, 0),
             ], bottom: t.bottom),
       ],
+      shields: [
+        for (final d in shields)
+          if (inside(d.dx)) d + Offset(dx, 0),
+      ],
       pools: [
         for (final p in pools)
           if (inside(p.left))
@@ -487,6 +495,9 @@ enum PlayerState { alive, fighting, dead, won }
 enum GameEvent {
   step,
   wade, // paani mein qadam (chhap-chhap)
+  shieldPickup, // raaste se dhaal uthayi
+  shieldBlock, // neza dhaal pe laga
+  shieldBreak, // teesre neze pe dhaal toot gayi
   jump,
   land,
   death,
@@ -524,6 +535,12 @@ class World {
   double time = 0;
   double deadTimer = 0;
   int checkpoint = 0;
+
+  // Dhaal: raaste mein pari milti hai, daurte daurte utha kar peeth pe. [shieldMax] neze rokti hai, phir toot'ti hai.
+  static const shieldMax = 3;
+  int shield = 0; // kitne aur neze rok sakti hai (0 = dhaal nahi)
+  final Set<int> shieldsTaken = {};
+  double pickupTime = -10, shieldHitTime = -10, shieldBreakTime = -10;
   int deaths = 0;
   PlayerState state = PlayerState.alive;
   final List<GameEvent> events = [];
@@ -849,6 +866,17 @@ class World {
       events.add(wading ? GameEvent.wade : GameEvent.step);
     }
 
+    // Raaste mein pari dhaal: paas se guzro to daurte daurte utha lo
+    for (var i = 0; i < level.shields.length; i++) {
+      if (shieldsTaken.contains(i)) continue;
+      if ((level.shields[i] - pos).distance < 24) {
+        shieldsTaken.add(i);
+        shield = shieldMax;
+        pickupTime = time;
+        events.add(GameEvent.shieldPickup);
+      }
+    }
+
     for (var i = checkpoint + 1; i < level.checkpoints.length; i++) {
       if (pos.dx >= level.checkpoints[i].dx) {
         checkpoint = i;
@@ -890,7 +918,23 @@ class World {
       return DeathKind.caught;
     }
     for (final sp in spears) {
-      if (!sp.stuck && r.contains(Offset(sp.x, sp.y))) {
+      if (!sp.stuck && !sp.spent && r.contains(Offset(sp.x, sp.y))) {
+        if (shield > 0) {
+          // Dhaal pe laga: neza uchhal kar gir jata hai, dhaal mein daraar (teesre pe toot jaati hai)
+          shield--;
+          sp
+            ..spent = true
+            ..vx = -sp.vx * 0.25
+            ..vy = -180;
+          if (shield == 0) {
+            shieldBreakTime = time;
+            events.add(GameEvent.shieldBreak);
+          } else {
+            shieldHitTime = time;
+            events.add(GameEvent.shieldBlock);
+          }
+          continue;
+        }
         events.add(GameEvent.spearHit);
         fallDir = sp.vx >= 0 ? 1 : -1; // neze ke zor se usi taraf
         spearAngle = sp.angle;
