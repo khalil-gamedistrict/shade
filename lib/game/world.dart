@@ -357,7 +357,7 @@ class Level {
   );
 }
 
-enum PlayerState { alive, dead, won }
+enum PlayerState { alive, fighting, dead, won }
 
 /// Game mein jo kuch hua — UI inhein sun kar sound bajata hai
 enum GameEvent {
@@ -373,6 +373,9 @@ enum GameEvent {
   spearHit,
   spearStick,
   shout,
+  fightStart, // shikaariyon ne pakar liya — larai shuru
+  fightHit, // larai mein waar
+  escape, // hero chhoot kar bhaag nikla
 }
 
 class World {
@@ -423,6 +426,24 @@ class World {
   static const spearGravity = 620.0;
   bool chaseActive = false;
 
+  // Larai: pakre jaane pe fauran maut nahi — [fightDuration] tak larai, phir maut.
+  // Is dauraan ek dafa (ad dekh kar) chhoot kar bhaag sakte hain.
+  static const fightDuration = 3.4;
+  static const fightHits = [
+    0.6,
+    1.25,
+    1.6,
+    2.0,
+    2.8,
+    3.4,
+  ]; // waar ke lamhe (awaaz, dhool, jhatka)
+  double fightTime = 0;
+  bool fightPaused = false; // ad chal raha ho to larai ruki rahe
+  bool escapeUsed = false; // har chapter mein sirf ek dafa
+  double escapeTime = -10;
+  double hunterStunUntil =
+      -10; // chhootne pe shikaari gir jaate hain, thori der baad uthte hain
+
   /// Trailer ke liye: maut nahi hoti, aur peechha band kiya ja sakta hai
   bool cinematic = false;
   bool allowChase = true;
@@ -431,6 +452,7 @@ class World {
   double _throwTimer = 0;
   double _grace = 0; // zinda hone ke baad thori mohlat
   double _shoutTimer = 2;
+  int _throws = 0;
   final spears = <Spear>[];
   late final List<(double, double)> _bigGaps =
       _findBigGaps(); // jin gaddhon pe shikaari ruk jate hain
@@ -526,6 +548,10 @@ class World {
   void _step(double dt, Input input) {
     time += dt;
     if (state == PlayerState.won) return;
+    if (state == PlayerState.fighting) {
+      _updateFight(dt);
+      return;
+    }
     if (state == PlayerState.dead) {
       deadTimer -= dt;
       // Gaddhay mein gira to girta rahe, paani mein gira to aahista doobe
@@ -613,7 +639,9 @@ class World {
     }
 
     final death = _hazard();
-    if (death != null) {
+    if (death == DeathKind.caught) {
+      _startFight();
+    } else if (death != null) {
       _die(death);
     } else if (pos.dx >= level.goalX) {
       state = PlayerState.won;
@@ -628,7 +656,7 @@ class World {
     final water = level.waterY;
     if (water != null && pos.dy > water + 12) return DeathKind.drown;
     if (pos.dy > level.deathY) return DeathKind.fall;
-    if (chaseActive && hunterX >= pos.dx - 26) {
+    if (chaseActive && time >= hunterStunUntil && hunterX >= pos.dx - 26) {
       fallDir = 1; // peeche se waar — aagay muun ke bal
       return DeathKind.caught;
     }
@@ -780,6 +808,11 @@ class World {
       events.add(GameEvent.chaseStart);
     }
 
+    if (time < hunterStunUntil) {
+      hunterMoving = false; // abhi gire hue hain
+      return;
+    }
+
     // Daurte aate hain, lekin kabhi bahut peeche nahi rehte
     final hunterBefore = hunterX;
     _grace -= dt;
@@ -814,7 +847,13 @@ class World {
       _throwTimer = chase.throwEvery * (0.75 + wobble * 0.5);
       final sx = hunterX, sy = hunterFootY(hunterX) - 38;
       final t = (dist / 360).clamp(0.75, 1.3);
-      final tx = pos.dx + vx * t * 0.8, ty = pos.dy - 24;
+      // Har teesra neza seedha nishane pe; baaqi aas paas girte hain (darate hain) —
+      // asal khatra pakra jaana hai, taake larai ka manzar aur Break Free khel mein aayen
+      final aimed = _throws++ % 3 == 2;
+      final miss = aimed
+          ? 0.0
+          : (sin(time * 5.1) >= 0 ? 1 : -1) * (30 + 22 * sin(time * 2.3).abs());
+      final tx = pos.dx + vx * t * 0.8 + miss, ty = pos.dy - 24;
       spears.add(
         Spear(
           sx,
@@ -842,6 +881,48 @@ class World {
       }
     }
     spears.removeWhere((sp) => sp.age > 6 || sp.y > level.deathY);
+  }
+
+  void _startFight() {
+    state = PlayerState.fighting;
+    fightTime = 0;
+    fightPaused = false;
+    vx = vy = 0;
+    hunterX = pos.dx - 24;
+    hunterMoving = false;
+    spears.clear();
+    facingRight = false; // palat kar muqabla
+    events.add(GameEvent.fightStart);
+  }
+
+  void _updateFight(double dt) {
+    if (fightPaused) return;
+    final before = fightTime;
+    fightTime += dt;
+    for (final h in fightHits) {
+      if (before < h && fightTime >= h) events.add(GameEvent.fightHit);
+    }
+    if (fightTime >= fightDuration) {
+      // Saamne se aakhri waar — peeche (shikaariyon se door) girta hai, neza jism mein gara hua
+      fallDir = 1;
+      spearAngle = 0;
+      _die(DeathKind.caught);
+    }
+  }
+
+  /// Larai ke dauraan ek dafa (ad ke badle): hero dhakka de kar chhoot jata hai, shikaari gir jaate hain
+  bool escape() {
+    if (state != PlayerState.fighting || escapeUsed) return false;
+    escapeUsed = true;
+    state = PlayerState.alive;
+    fightPaused = false;
+    escapeTime = time;
+    hunterStunUntil = time + 1.6;
+    hunterX = pos.dx - 46; // dhakke se peeche gire
+    _grace = 3; // uth kar bhi foran qareeb na aa jayen
+    facingRight = true;
+    events.add(GameEvent.escape);
+    return true;
   }
 
   void _respawn() {

@@ -19,7 +19,18 @@ class Progress {
   }
 
   /// Pehla chapter hamesha khula; baaqi tab khulte hain jab pichhla paar ho jaye
-  bool unlocked(int chapter) => chapter == 1 || done.contains(chapter - 1);
+  bool unlocked(int chapter) =>
+      unlockAll || chapter == 1 || done.contains(chapter - 1);
+
+  /// Abhi testing ke liye saare chapter khule. Release build mein band karna:
+  /// flutter build ... --dart-define=UNLOCK_ALL=false
+  final bool unlockAll;
+  Progress({
+    this.unlockAll = const bool.fromEnvironment(
+      'UNLOCK_ALL',
+      defaultValue: true,
+    ),
+  });
 
   Future<void> markDone(int chapter) async {
     done.add(chapter);

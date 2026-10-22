@@ -293,7 +293,8 @@ void main() {
       final w = World(chaseLevel());
       var thrown = false;
       var hit = false;
-      for (var i = 0; i < 40 && w.state == PlayerState.alive; i++) {
+      for (var i = 0; i < 160 && !hit; i++) {
+        // har teesra neza nishane pe
         w.update(0.1, Input());
         thrown = thrown || w.events.contains(GameEvent.spearThrow);
         hit = hit || w.events.contains(GameEvent.spearHit);
@@ -402,7 +403,7 @@ void main() {
 
   group('trailer aur lock', () {
     test('chapter tabhi khulta hai jab pichhla paar ho', () {
-      final p = Progress();
+      final p = Progress(unlockAll: false); // release jaisa
       expect(p.unlocked(1), isTrue);
       expect(p.unlocked(2), isFalse);
       p.done.add(1);
@@ -519,6 +520,65 @@ void main() {
       expect(w.state, PlayerState.dead); // ab bhi jal raha hai
       w.update(1.0, Input());
       expect(w.state, PlayerState.alive);
+    });
+  });
+
+  group('larai aur Break Free', () {
+    Level chaseLevel() => const Level(
+      solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+      spikes: [],
+      saws: [],
+      checkpoints: [Offset(100, 400)],
+      goalX: 2900,
+      chase: Chase(
+        startX: 100,
+        throwEvery: 999,
+      ), // sirf pakarne ka test, neze nahi
+    );
+
+    World caught() {
+      final w = World(chaseLevel());
+      while (w.state == PlayerState.alive) {
+        w.update(0.05, Input());
+        w.spears.clear(); // sirf pakarna jaanch rahe hain
+      }
+      return w;
+    }
+
+    test('pakre jaane pe pehle larai hoti hai, phir maut', () {
+      final w = caught();
+      expect(w.state, PlayerState.fighting);
+      expect(w.events, contains(GameEvent.fightStart));
+      w.update(World.fightDuration - 0.2, Input());
+      expect(w.state, PlayerState.fighting);
+      expect(w.events, contains(GameEvent.fightHit));
+      w.update(0.3, Input());
+      expect(w.state, PlayerState.dead);
+      expect(w.deathKind, DeathKind.caught);
+    });
+
+    test('Break Free se chhoot jata hai, shikaari gir jaate hain, sirf ek dafa milta hai', () {
+      final w = caught()..update(1, Input());
+      expect(w.escape(), isTrue);
+      expect(w.state, PlayerState.alive);
+      // Shikaari gire hue — bhaagne ka mauqa
+      final run = Input()..right = true;
+      w.update(1.5, run);
+      expect(w.state, PlayerState.alive);
+      expect(w.pos.dx - w.hunterX, greaterThan(150));
+      // Dobara pakra gaya to ab chhootne ka mauqa nahi
+      while (w.state == PlayerState.alive) {
+        w.update(0.05, Input());
+        w.spears.clear();
+      }
+      expect(w.state, PlayerState.fighting);
+      expect(w.escape(), isFalse);
+    });
+
+    test('ad ke dauraan larai ruki rehti hai', () {
+      final w = caught()..fightPaused = true;
+      w.update(10, Input());
+      expect(w.state, PlayerState.fighting);
     });
   });
 }

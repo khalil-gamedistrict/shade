@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'game/chapters.dart';
 import 'game/jungle.dart';
 import 'game/sound.dart';
+import 'services/ads.dart';
 import 'ui/game_screen.dart';
 import 'ui/menu.dart';
 import 'ui/trailer.dart';
@@ -54,6 +55,7 @@ class _ShadeHomeState extends State<ShadeHome> {
       _Phase.trailer; // har dafa khulne pe pehle trailer (skip ho sakta hai)
   final jungle = Jungle(); // darakhton ki tasveerein ek dafa — trailer aur saare chapters mein
   Chapter chapter = chapters.first;
+  final AdService ads = PlaceholderAds(); // asli ads aane pe yahan badalna
 
   @override
   void initState() {
@@ -114,6 +116,7 @@ class _ShadeHomeState extends State<ShadeHome> {
           sound: sound,
           onComplete: _completed,
           onExit: _toTitle,
+          ads: ads,
         ),
         _Phase.soon => ComingSoon(
           key: ValueKey('soon${chapter.number}'),

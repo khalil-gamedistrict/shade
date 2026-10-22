@@ -249,9 +249,16 @@ void drawFigure(
   // Aagay wala baazu (aur hathiyar)
   final hand = _limb(canvas, shoulder, armA, 7.5, 7, 2.9, dir);
   if (look == Look.feathers || look == Look.shield) {
-    // Neza: haath se aagay-oopar ki taraf
-    final a = -0.35;
-    final d = Offset(cos(a) * dir, sin(a));
+    // Neza: daurte waqt aagay-oopar ki taraf; larai jaise pose mein kalaai ki seedh mein (waar dikhe)
+    final Offset d;
+    if (pose != null) {
+      final fore =
+          armA.$1 + armA.$2; // kalaai ka zawiya (neeche se, munh ki taraf +)
+      d = Offset(sin(fore) * dir, cos(fore));
+    } else {
+      const a = -0.35;
+      d = Offset(cos(a) * dir, sin(a));
+    }
     final tail = hand - d * 20, tip = hand + d * 30;
     canvas.drawLine(tail, tip, _stroke(1.6));
     final n = Offset(-d.dy, d.dx);

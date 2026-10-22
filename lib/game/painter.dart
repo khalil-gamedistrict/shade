@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'fight.dart';
 import 'figures.dart';
 import 'grass.dart';
 import 'props.dart';
@@ -64,7 +65,7 @@ class WorldPainter extends CustomPainter {
 
     // --- Game ki duniya (camera ke saath)
     canvas.save();
-    canvas.translate(-camX, 0);
+    canvas.translate(-camX + _shake(), 0);
     jungle.drawWorldBack(canvas, world, camX, viewW, t, scale);
     final level = world.level;
     for (var i = 0; i < level.huts.length; i++) {
@@ -135,6 +136,7 @@ class WorldPainter extends CustomPainter {
       _rock(canvas, Offset(rock.x, world.rockY[i]), rock.radius, i);
     }
     _spears(canvas);
+    _fightDust(canvas);
     _splashes(canvas);
     canvas.restore();
 
@@ -510,8 +512,71 @@ class WorldPainter extends CustomPainter {
     );
   }
 
+  /// Larai mein waar ke lamhe kitne qareeb: 1 = abhi abhi waar hua, 0 = koi nahi
+  double _hitPulse() {
+    if (world.state != PlayerState.fighting) return 0;
+    var best = 0.0;
+    for (final h in World.fightHits) {
+      final e = (world.fightTime - h) / 0.22;
+      if (e >= 0 && e < 1) best = max(best, 1 - e);
+    }
+    return best;
+  }
+
+  double _shake() => sin(world.fightTime * 95) * 3 * _hitPulse();
+
+  /// Waar pe dhool aur chhote zarre
+  void _fightDust(Canvas canvas) {
+    final p = _hitPulse();
+    if (p <= 0) return;
+    final e = 1 - p;
+    final c = world.pos + const Offset(-12, -26);
+    final dust = Paint()
+      ..color = const Color(0xFFCFCFCF).withValues(alpha: 0.55 * p);
+    for (var k = 0; k < 7; k++) {
+      final a = k / 7 * 2 * pi + world.fightTime;
+      canvas.drawCircle(
+        c + Offset(cos(a), sin(a) * 0.7) * (4 + e * 14),
+        1.6 + e * 1.5,
+        dust,
+      );
+    }
+  }
+
   void _player(Canvas canvas) {
     final dir = world.facingRight ? 1.0 : -1.0;
+    if (world.state == PlayerState.fighting) {
+      final (pose, dx) = heroFight(world.fightTime);
+      drawFigure(
+        canvas,
+        look: Look.hero,
+        foot: world.pos + Offset(dx, 0),
+        dir: -1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: world.time,
+        wind: world.windAt(world.pos.dx),
+        pose: pose,
+      );
+      return;
+    }
+    if (world.state == PlayerState.alive &&
+        world.time - world.escapeTime < 0.35) {
+      // Chhootne ka dhakka
+      drawFigure(
+        canvas,
+        look: Look.hero,
+        foot: world.pos,
+        dir: -1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: world.time,
+        pose: escapeShove,
+      );
+      return;
+    }
     if (world.state == PlayerState.dead) {
       final t = world.time - world.deathTime;
       final wind = world.windAt(world.pos.dx);
@@ -574,7 +639,9 @@ class WorldPainter extends CustomPainter {
           dying(speed: 3); // bhaari patthar — foran dab gaya
         case DeathKind.spike:
           dying(raise: 9); // kaanton ke oopar
-        case DeathKind.trap || DeathKind.caught:
+        case DeathKind.caught:
+          dying(spear: world.spearAngle); // ghonpa hua neza jism mein
+        case DeathKind.trap:
           dying();
       }
       return;
@@ -596,6 +663,84 @@ class WorldPainter extends CustomPainter {
   void _hunters(Canvas canvas, double camX, double viewW) {
     if (!world.chaseActive) return;
     const looks = [Look.feathers, Look.shield, Look.archer];
+    final px = world.pos.dx, py = world.pos.dy;
+    if (world.state == PlayerState.fighting) {
+      // Larai: aagay wala neze se, doosra dhaal wala saath, kaman wala peeche nishana baandhe
+      final (leadPose, leadDx) = leadFight(world.fightTime);
+      final (secondPose, secondDx) = secondFight(world.fightTime);
+      drawFigure(
+        canvas,
+        look: Look.archer,
+        foot: Offset(px - 110, py),
+        dir: 1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: world.time,
+        scale: 1.06,
+        pose: const FigurePose((0.2, 0), (-0.25, 0), (1.55, 0), (1.2, 0.6)),
+      );
+      drawFigure(
+        canvas,
+        look: Look.shield,
+        foot: Offset(px + secondDx, py),
+        dir: 1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: world.time,
+        scale: 1.06,
+        pose: secondPose,
+      );
+      drawFigure(
+        canvas,
+        look: Look.feathers,
+        foot: Offset(px - 24 + leadDx, py),
+        dir: 1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: world.time,
+        scale: 1.06,
+        pose: leadPose,
+      );
+      return;
+    }
+    if (world.time < world.hunterStunUntil) {
+      // Dhakka kha kar gire hue, aakhir mein uth khare hote hain
+      final down = world.time - world.escapeTime;
+      final rising = world.hunterStunUntil - world.time < 0.35;
+      for (var i = 0; i < World.hunterGaps.length; i++) {
+        final foot = Offset(
+          world.hunterX - World.hunterGaps[i],
+          world.hunterFootY(world.hunterX - World.hunterGaps[i]),
+        );
+        if (rising) {
+          drawFigure(
+            canvas,
+            look: looks[i],
+            foot: foot,
+            dir: 1,
+            phase: 0,
+            moving: false,
+            inAir: false,
+            time: world.time,
+            scale: 1.06,
+          );
+        } else {
+          drawDying(
+            canvas,
+            look: looks[i],
+            foot: foot,
+            dir: 1,
+            fallDir: -1,
+            t: min(down * (1 + i * 0.2), 0.9),
+            time: world.time + i,
+          );
+        }
+      }
+      return;
+    }
     for (var i = 0; i < World.hunterGaps.length; i++) {
       final x = world.hunterX - World.hunterGaps[i];
       if (x < camX - 60 || x > camX + viewW + 60) continue;

@@ -8,6 +8,7 @@ import '../game/painter.dart';
 import '../game/sound.dart';
 import '../game/weather.dart';
 import '../game/world.dart';
+import '../services/ads.dart';
 
 // CI build ke waqt --dart-define=BUILD_INFO=... se set hota hai
 const buildInfo = String.fromEnvironment('BUILD_INFO', defaultValue: 'local');
@@ -18,12 +19,14 @@ class GameScreen extends StatefulWidget {
   final Sound? sound; // tests mein null, kyunke wahan audio plugin nahi hota
   final VoidCallback onComplete; // chapter khatam
   final VoidCallback onExit; // menu pe wapas
+  final AdService ads; // larai se chhootne ke badle ad
   const GameScreen({
     super.key,
     required this.level,
     required this.jungle,
     required this.onComplete,
     required this.onExit,
+    required this.ads,
     this.sound,
   });
 
@@ -41,6 +44,7 @@ class _GameScreenState extends State<GameScreen>
   PlayerState shownState = PlayerState.alive;
   Sound? get sound => widget.sound;
   bool _leaving = false;
+  bool _adShowing = false;
   Jungle get jungle => widget.jungle;
   final weather = Weather();
 
@@ -77,6 +81,7 @@ class _GameScreenState extends State<GameScreen>
     }
     world.events.clear();
     frame.value++;
+    if (world.state == PlayerState.fighting) setState(() {}); // waqt ki patti
     if (world.state != shownState) {
       setState(() => shownState = world.state);
       // Roshni tak pahunch gaya — thori der baad agla chapter
@@ -102,6 +107,8 @@ class _GameScreenState extends State<GameScreen>
         key == LogicalKeyboardKey.arrowUp ||
         key == LogicalKeyboardKey.keyW) {
       input.jump = down;
+    } else if (key == LogicalKeyboardKey.keyE && down) {
+      _breakFree();
     } else if (key == LogicalKeyboardKey.escape && !down) {
       widget.onExit();
     } else {
@@ -110,11 +117,88 @@ class _GameScreenState extends State<GameScreen>
     return true;
   }
 
+  /// Larai ke dauraan ek dafa: ad dekho, poora dekha to hero chhoot kar bhaag nikalta hai
+  Future<void> _breakFree() async {
+    final canEscape = world.state == PlayerState.fighting && !world.escapeUsed;
+    if (!canEscape || _adShowing) return;
+    world.fightPaused = true; // ad ke dauraan larai ruki rahe
+    setState(() => _adShowing = true);
+    final rewarded = await widget.ads.showRewarded(context);
+    if (!mounted) return;
+    _adShowing = false;
+    if (rewarded) {
+      world.escape();
+    } else {
+      world.fightPaused = false; // ad chhod diya — larai jari
+    }
+    setState(() {});
+  }
+
   @override
   void dispose() {
     ticker.dispose();
     HardwareKeyboard.instance.removeHandler(_onKey);
     super.dispose();
+  }
+
+  Widget _breakFreeButton() {
+    final left = (1 - world.fightTime / World.fightDuration).clamp(0.0, 1.0);
+    return GestureDetector(
+      onTap: _breakFree,
+      child: Container(
+        width: 230,
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
+        decoration: BoxDecoration(
+          color: const Color(0xDD111111),
+          border: Border.all(color: Colors.white54),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'BREAK FREE',
+              style: TextStyle(
+                fontSize: 18,
+                letterSpacing: 4,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.play_circle_outline,
+                  size: 14,
+                  color: Colors.white60,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'Watch an ad  ·  E',
+                  style: TextStyle(
+                    fontSize: 12,
+                    letterSpacing: 1.5,
+                    color: Colors.white60,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Larai ka bacha waqt
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: left,
+                minHeight: 3,
+                backgroundColor: Colors.white12,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -171,6 +255,15 @@ class _GameScreenState extends State<GameScreen>
               style: const TextStyle(fontSize: 10, color: Colors.white38),
             ),
           ),
+          if (world.state == PlayerState.fighting &&
+              !world.escapeUsed &&
+              !_adShowing)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 28,
+              child: Center(child: _breakFreeButton()),
+            ),
           // Chapter khatam: screen aahista kaali ho jaati hai
           IgnorePointer(
             child: AnimatedOpacity(
