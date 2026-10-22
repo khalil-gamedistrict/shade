@@ -141,6 +141,8 @@ class Weather {
         best = s.top;
       }
     }
+    final t = level.terrainTop(x);
+    if (t != null && (best == null || t < best)) best = t;
     return best;
   }
 

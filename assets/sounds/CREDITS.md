@@ -39,4 +39,5 @@ Sab recordings [Freesound.org](https://freesound.org) se, license **CC0 1.0 (pub
 - [body_hit](https://freesound.org/s/276600/) — insanity54
 - [Melee Weapon hit with male moan & body fall](https://freesound.org/s/264062/) — Paul368
 - [Knife/sword stab #2](https://freesound.org/s/399617/) — SoundsForHim
+- [Wading in Shallow Water.wav](https://freesound.org/s/342932/) — ryansitz
 - [Bush Rustle](https://freesound.org/s/560261/) — RoyalRose

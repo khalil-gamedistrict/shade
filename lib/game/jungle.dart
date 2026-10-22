@@ -496,36 +496,35 @@ class Jungle {
       final ground = level.ground.where(
         (s) => x > s.left + 10 && x < s.right - 10 && s.top >= 340,
       );
-      if (ground.isEmpty) continue;
-      _drawPieces(
-        canvas,
-        near,
-        i,
-        Offset(x, ground.first.top + 2),
-        world.windAt(x),
-        t,
-        res,
-      );
+      // Ooncha-neecha zameen pe bhi darakht — paani mein nahi
+      final hill = level.poolAt(x) == null ? level.terrainTop(x) : null;
+      final top = ground.isNotEmpty
+          ? ground.first.top
+          : (hill != null && hill >= 300 ? hill : null);
+      if (top == null) continue;
+      _drawPieces(canvas, near, i, Offset(x, top + 2), world.windAt(x), t, res);
     }
 
     // Zameen pe fern, jhaariyan, bare patte — spikes ke paas nahi (taake khatra saaf dikhe)
     final pres = _res(scale, 1);
-    for (final s in level.ground) {
-      if (s.right < camX - 80 ||
-          s.left > camX + viewW + 80 ||
-          s.width < 60 ||
-          s.height < 10) {
-        continue;
-      }
+    // Seedhi zameen aur ooncha-neecha zameen dono: (left, right, sath)
+    final spans = <(double, double, double Function(double))>[
+      for (final s in level.ground)
+        if (s.width >= 60 && s.height >= 10) (s.left, s.right, (_) => s.top),
+      for (final tr in level.terrain) (tr.left, tr.right, (x) => tr.topAt(x)!),
+    ];
+    for (final (left, right, topAt) in spans) {
+      if (right < camX - 80 || left > camX + viewW + 80) continue;
       const cell = 26.0;
       for (
-        var i = (max(s.left, camX - 80) / cell).floor();
-        i * cell < min(s.right, camX + viewW + 80);
+        var i = (max(left, camX - 80) / cell).floor();
+        i * cell < min(right, camX + viewW + 80);
         i++
       ) {
         if (_hash(i, 41) > 0.8) continue;
         final x = i * cell + _hash(i, 42) * cell;
-        if (x < s.left + 15 || x > s.right - 15) continue;
+        if (x < left + 15 || x > right - 15) continue;
+        if (level.poolAt(x) != null) continue; // paani mein paude nahi
         if ([
           ...level.spikes,
           ...level.fires,
@@ -540,7 +539,7 @@ class Jungle {
         SpriteCache.draw(
           canvas,
           _plant(type, i % 6, pres, _groundColor),
-          Offset(x, s.top + 3),
+          Offset(x, topAt(x) + 3),
           shear: -sway,
           mirror: _hash(i, 44) > 0.5,
           scale:

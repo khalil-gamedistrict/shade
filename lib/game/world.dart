@@ -69,6 +69,46 @@ class Pendulum {
   }
 }
 
+/// Ooncha-neecha qudrati zameen ka tukra: [points] (x, sath ki oonchai) — beech mein naram (smooth) mor,
+/// neeche [bottom] tak bhari hui. Teelay, dhalan, gadhe. Pehle aur aakhri point pe khatam (wahan se gaddha).
+class Terrain {
+  final List<Offset> points;
+  final double bottom;
+  const Terrain(this.points, {this.bottom = 650});
+
+  double get left => points.first.dx;
+  double get right => points.last.dx;
+
+  /// [x] pe sath ki oonchai; tukre se bahar null
+  double? topAt(double x) {
+    if (x < left || x > right) return null;
+    var i = 1;
+    while (i < points.length - 1 && points[i].dx < x) {
+      i++;
+    }
+    // Catmull-Rom: points se guzarta naram mor
+    final p1 = points[i - 1], p2 = points[i];
+    final p0 = i >= 2 ? points[i - 2] : p1;
+    final p3 = i + 1 < points.length ? points[i + 1] : p2;
+    final t = (x - p1.dx) / max(1e-6, p2.dx - p1.dx);
+    final m1 = (p2.dy - p0.dy) / max(1e-6, p2.dx - p0.dx) * (p2.dx - p1.dx);
+    final m2 = (p3.dy - p1.dy) / max(1e-6, p3.dx - p1.dx) * (p2.dx - p1.dx);
+    final t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * p1.dy +
+        (t3 - 2 * t2 + t) * m1 +
+        (-2 * t3 + 3 * t2) * p2.dy +
+        (t3 - t2) * m2;
+  }
+}
+
+/// Khara paani (talaab, keechar wala naala): [left]..[right] mein [surface] tak paani.
+/// [deep] = doobne wala (koodna parta hai); warna ghutnon tak — chaal dheemi.
+class Pool {
+  final double left, right, surface;
+  final bool deep;
+  const Pool(this.left, this.right, this.surface, {this.deep = false});
+}
+
 /// Chapter ka mahaul — painter is ke hisaab se khaas cheezen banata hai
 enum Mood { forest, fire, river, cliffs, home }
 
@@ -152,6 +192,8 @@ class Level {
   final List<double> huts; // peeche jalti jhonpriyan (sirf manzar)
   final Mood mood;
   final double? waterY; // darya: is oonchai pe paani, gire to doob gaye
+  final List<Terrain> terrain; // ooncha-neecha zameen (teelay, dhalan)
+  final List<Pool> pools; // khara paani
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -175,11 +217,34 @@ class Level {
     this.huts = const [],
     this.mood = Mood.forest,
     this.waterY,
+    this.terrain = const [],
+    this.pools = const [],
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });
 
-  double get width => solids.fold(0.0, (m, s) => max(m, s.right));
+  double get width => max(
+    solids.fold(0.0, (m, s) => max(m, s.right)),
+    terrain.fold(0.0, (m, t) => max(m, t.right)),
+  );
+
+  /// [x] pe ooncha-neecha zameen ki sath (sab se oonchi), na ho to null
+  double? terrainTop(double x) {
+    double? best;
+    for (final t in terrain) {
+      final y = t.topAt(x);
+      if (y != null && (best == null || y < best)) best = y;
+    }
+    return best;
+  }
+
+  /// [x] pe paani (agar koi talaab hai)
+  Pool? poolAt(double x) {
+    for (final p in pools) {
+      if (x >= p.left && x <= p.right) return p;
+    }
+    return null;
+  }
 
   static final _hideoutCache = Expando<(Rect?, List<Rect>)>();
 
@@ -288,6 +353,18 @@ class Level {
       ],
       goalX: goal + dx,
       deathY: deathY,
+      terrain: [
+        for (final t in terrain)
+          if (t.right > from && t.left < to)
+            Terrain([
+              for (final p in t.points) p + Offset(dx, 0),
+            ], bottom: t.bottom),
+      ],
+      pools: [
+        for (final p in pools)
+          if (inside(p.left))
+            Pool(p.left + dx, p.right + dx, p.surface, deep: p.deep),
+      ],
       chase: chase == null
           ? null
           : Chase(
@@ -409,6 +486,7 @@ enum PlayerState { alive, fighting, dead, won }
 /// Game mein jo kuch hua — UI inhein sun kar sound bajata hai
 enum GameEvent {
   step,
+  wade, // paani mein qadam (chhap-chhap)
   jump,
   land,
   death,
@@ -587,7 +665,40 @@ class World {
     for (final s in level.ground) {
       if (x >= s.left && x <= s.right && s.top < best) best = s.top;
     }
+    final t = level.terrainTop(x);
+    if (t != null && t < best) best = t;
     return best;
+  }
+
+  /// Paon paani ki sath se neeche (talaab mein khara/chal raha)
+  bool _inWater(Offset feet) {
+    final p = level.poolAt(feet.dx);
+    return p != null && feet.dy > p.surface + 2;
+  }
+
+  /// Is se zyada oonchi dhalan/chattan pe chal kar nahi chadh sakte — koodna parta hai
+  static const stepUp = 12.0;
+
+  /// Ooncha-neecha zameen pe chalna: [x] se [nx] tak jaa sakte hain? (aagay seedhi oonchi deewar/teela nahi)
+  bool _terrainBlocks(double x, double nx, double feet) {
+    final top = level.terrainTop(nx);
+    if (top == null || top >= feet - 0.5) return false;
+    // Paon sath se neeche (andar) aa rahe hain: thori oonchai chadh lo, zyada ho to ruk jao
+    if (top < feet - stepUp) return true;
+    final here = level.terrainTop(x);
+    // Bohot tez charhai (45° se zyada) — chal kar nahi
+    return here != null && (here - top) > (nx - x).abs() * 1.2 + 0.5;
+  }
+
+  /// Gir rahe/chal rahe jism ko ooncha-neecha zameen pe tikao. Jo pehle se zameen pe tha woh dhalan pe neeche
+  /// utarte hue bhi chipka rahe. Wapas: nayi (y, zameen pe?) — ya null agar zameen nahi chhui.
+  double? _terrainLand(double x, double y, double vy, bool wasGrounded) {
+    if (vy < 0) return null;
+    final top = level.terrainTop(x);
+    if (top == null) return null;
+    final reach = wasGrounded ? 10.0 : 0.0;
+    if (y >= top - reach && y <= top + 40) return top;
+    return null;
   }
 
   /// Girti/giri hui shaakh — zameen pe thos rukawat
@@ -689,7 +800,10 @@ class World {
     // Zameen pe khare ho to hawa nahi dhakelti (warna khare khare gaddhay mein gir jao)
     final pushed = !grounded || vx != 0;
     final moveX = vx + (pushed ? windAt(pos.dx) * windPush : 0);
-    pos = Offset(pos.dx + moveX * dt, pos.dy);
+    // Paani mein chaal dheemi (ghutnon tak paani)
+    final wading = _inWater(pos);
+    final nx = pos.dx + moveX * dt * (wading ? 0.55 : 1);
+    if (!_terrainBlocks(pos.dx, nx, pos.dy)) pos = Offset(nx, pos.dy);
     for (final s in solids) {
       final r = playerRect;
       if (!r.overlaps(s)) continue;
@@ -717,6 +831,14 @@ class World {
       }
       vy = 0;
     }
+    if (!grounded) {
+      final land = _terrainLand(pos.dx, pos.dy, vy, wasGrounded);
+      if (land != null) {
+        pos = Offset(pos.dx, land);
+        grounded = true;
+        vy = 0;
+      }
+    }
 
     if (grounded && !wasGrounded && fallSpeed > 300) events.add(GameEvent.land);
 
@@ -724,7 +846,7 @@ class World {
     walkPhase = grounded && vx != 0 ? walkPhase + dt * 8.5 : 0;
     // Har aadhe chakkar pe ek qadam zameen pe parta hai
     if ((walkPhase / pi).floor() > (oldPhase / pi).floor()) {
-      events.add(GameEvent.step);
+      events.add(wading ? GameEvent.wade : GameEvent.step);
     }
 
     for (var i = checkpoint + 1; i < level.checkpoints.length; i++) {
@@ -751,6 +873,10 @@ class World {
     final facing = facingRight ? 1.0 : -1.0;
     final water = level.waterY;
     if (water != null && pos.dy > water + 12) return DeathKind.drown;
+    final pool = level.poolAt(pos.dx);
+    if (pool != null && pool.deep && pos.dy > pool.surface + 14) {
+      return DeathKind.drown;
+    }
     if (pos.dy > level.deathY) return DeathKind.fall;
     final lead = hunters.first;
     // Larai zameen pe hi: hawa mein (kood ke beech) koi kisi ko nahi pakarta
@@ -1008,6 +1134,11 @@ class World {
           (s) => nx >= s.left && nx <= s.right && s.top >= py && s.top <= ny,
         );
         if (hit) return true;
+        // Ooncha-neecha zameen pe utra — lekin gehre paani mein nahi
+        final top = level.terrainTop(nx);
+        if (top != null && ny >= top && py <= top + 6) {
+          return !(level.poolAt(nx)?.deep ?? false);
+        }
       }
       if (ny > y + 220) return false;
       py = ny;
@@ -1022,7 +1153,14 @@ class World {
       for (var i = 0; i < level.branches.length; i++)
         if (branchState[i] == 2) branchRect(i),
     ];
-    final hazards = [...level.spikes, ...level.traps, ...level.fires];
+    final hazards = [
+      ...level.spikes,
+      ...level.traps,
+      ...level.fires,
+      for (final p in level.pools)
+        if (p.deep)
+          Rect.fromLTRB(p.left, p.surface - 4, p.right, p.surface + 60),
+    ];
     final stunned = time < hunterStunUntil;
     for (var i = 0; i < hunters.length; i++) {
       final b = hunters[i];
@@ -1052,21 +1190,36 @@ class World {
             ? Rect.fromLTRB(b.x + 10, b.y - 60, b.x + 50, b.y + 1)
             : Rect.fromLTRB(b.x - 50, b.y - 60, b.x - 10, b.y + 1);
         final danger = hazards.any((h) => h.overlaps(ahead.inflate(4)));
-        final wall = solids.any((s) => s.overlaps(ahead) && s.top < b.y - 3);
-        final edge = !solids.any(
-          (s) =>
-              b.x + dir * 24 >= s.left &&
-              b.x + dir * 24 <= s.right &&
-              (s.top - b.y).abs() < 12,
-        );
-        // Aage sirf neeche zameen hai (seedhi/chabootre se utarna) — kood ke bajaye chal kar utro
-        bool groundNear(double x, double y, double below) => solids.any(
-          (s) =>
-              x >= s.left &&
-              x <= s.right &&
-              s.top >= y - 90 &&
-              s.top <= y + below,
-        );
+        // Saamne oonchi cheez: deewar, ya teele ki itni oonchi/tez charhai ke chal kar na chadh saken
+        final rise = level.terrainTop(b.x + dir * 14);
+        final wall =
+            solids.any((s) => s.overlaps(ahead) && s.top < b.y - 3) ||
+            (rise != null && rise < b.y - stepUp) ||
+            _terrainBlocks(b.x, b.x + dir * 3, b.y);
+        final slope = level.terrainTop(b.x + dir * 24);
+        final edge =
+            !(slope != null && (slope - b.y).abs() < 12) &&
+            !solids.any(
+              (s) =>
+                  b.x + dir * 24 >= s.left &&
+                  b.x + dir * 24 <= s.right &&
+                  (s.top - b.y).abs() < 12,
+            );
+        // Aage sirf neeche zameen hai (seedhi/chabootre/dhalan se utarna) — kood ke bajaye chal kar utro
+        bool groundNear(double x, double y, double below) {
+          final t = level.terrainTop(x);
+          if (t != null && t >= y - 90 && t <= y + below) {
+            return !(level.poolAt(x)?.deep ?? false);
+          }
+          return solids.any(
+            (s) =>
+                x >= s.left &&
+                x <= s.right &&
+                s.top >= y - 90 &&
+                s.top <= y + below,
+          );
+        }
+
         final stepDown =
             edge &&
             !danger &&
@@ -1081,7 +1234,17 @@ class World {
               break;
             }
           }
-          if (jumpSpeed == null) {
+          // Khatra abhi thora door hai aur yahan se kood ke paar nahi — chalte raho, kinare ke qareeb se koodo
+          final step = Rect.fromLTRB(
+            min(b.x, b.x + dir * 16),
+            b.y - 4,
+            max(b.x, b.x + dir * 16),
+            b.y + 1,
+          );
+          final closeDanger = hazards.any((h) => h.overlaps(step));
+          if (jumpSpeed == null && danger && !wall && !edge && !closeDanger) {
+            // aagay barho
+          } else if (jumpSpeed == null) {
             b.vx = 0; // mehfooz landing nahi — kinare pe ruk kar intezar (insaan andhi chhalaang nahi lagata)
           } else {
             b.vy = -jumpVelocity; // hero jitna hi oonchaa
@@ -1091,8 +1254,9 @@ class World {
         }
       }
       b.vy += gravity * dt;
-      // Pehle aagay, deewar se takkar; phir oopar neeche, zameen pe tikna
-      b.x += b.vx * dt;
+      // Pehle aagay, deewar se takkar; phir oopar neeche, zameen pe tikna. Paani mein dheeme.
+      final nx = b.x + b.vx * dt * (_inWater(Offset(b.x, b.y)) ? 0.55 : 1);
+      if (!_terrainBlocks(b.x, nx, b.y)) b.x = nx;
       for (final s in solids) {
         final r = Rect.fromLTWH(
           b.x - playerW / 2,
@@ -1103,6 +1267,7 @@ class World {
         if (!r.overlaps(s)) continue;
         b.x = b.vx > 0 ? s.left - playerW / 2 : s.right + playerW / 2;
       }
+      final wasGrounded = b.grounded;
       b.grounded = false;
       b.y += b.vy * dt;
       for (final s in solids) {
@@ -1120,6 +1285,15 @@ class World {
           b.y = s.bottom + playerH;
         }
         b.vy = 0;
+      }
+      if (!b.grounded) {
+        final land = _terrainLand(b.x, b.y, b.vy, wasGrounded);
+        if (land != null) {
+          b
+            ..y = land
+            ..vy = 0
+            ..grounded = true;
+        }
       }
       if (b.y > level.deathY) {
         // Gaddhay mein gir gaya — kuch der baad peeche se, nazar se door

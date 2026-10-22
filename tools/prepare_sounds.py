@@ -58,6 +58,8 @@ SOURCES = {
     276600: ("276/276600_464940", "body_hit", "insanity54"),
     264062: ("264/264062_2971294", "Melee Weapon hit with male moan & body fall", "Paul368"),
     399617: ("399/399617_7386498", "Knife/sword stab #2", "SoundsForHim"),
+    # Naale ke paani mein qadam
+    342932: ("342/342932_5800259", "Wading in Shallow Water.wav", "ryansitz"),
     # Panah: patton mein se gaddhay mein girna
     560261: ("560/560261_12560866", "Bush Rustle", "RoyalRose"),
 }
@@ -145,6 +147,9 @@ if __name__ == "__main__":
               (401693, 10.05, 0.8), (219860, 0.45, 1.9), (401693, 11.5, 1.2)]
     for i, (sid, t, length) in enumerate(shouts, 1):
         oneshot(f"shout{i}", sid, t, length, 0.25)
+    # Paani mein qadam (chhap-chhap)
+    for i, t in enumerate([18.87, 6.40, 4.84, 12.40], 1):
+        oneshot(f"wade{i}", 342932, t, 0.42, 0.14)
     # Daurte shikaari: kai logon ke qadmon ki chaadar + oopar patton pe do alag daurte qadam
     run = os.path.join(CACHE, "_hunters_run_mix.wav")
     parts = []

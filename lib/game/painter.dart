@@ -97,6 +97,29 @@ class WorldPainter extends CustomPainter {
         t,
       );
     }
+    // Ooncha-neecha zameen: teelay, dhalan, gadhe — ghaas sath ke saath, paani ke neeche nahi
+    for (final tr in level.terrain) {
+      if (tr.right < camX - 40 || tr.left > camX + viewW + 40) continue;
+      final a = max(tr.left, camX - 40), b = min(tr.right, camX + viewW + 40);
+      final ground = Path()..moveTo(a, tr.bottom);
+      for (var x = a; x < b; x += 4) {
+        ground.lineTo(x, tr.topAt(x)!);
+      }
+      ground
+        ..lineTo(b, tr.topAt(b)!)
+        ..lineTo(b, tr.bottom)
+        ..close();
+      canvas.drawPath(ground, _black);
+      var from = tr.left;
+      for (final p in [
+        ...level.pools,
+      ]..sort((x, y) => x.left.compareTo(y.left))) {
+        if (p.right < tr.left || p.left > tr.right) continue;
+        _terrainGrass(grass, tr, from, p.left - 6, camX, viewW, t);
+        from = p.right + 6;
+      }
+      _terrainGrass(grass, tr, from, tr.right, camX, viewW, t);
+    }
     final hole = level.hideout;
     if (hole != null &&
         hole.right > camX - 60 &&
@@ -147,6 +170,11 @@ class WorldPainter extends CustomPainter {
     extra?.call(canvas);
     _hunters(canvas, camX, viewW);
     _player(canvas);
+    _pools(
+      canvas,
+      camX,
+      viewW,
+    ); // paani jismon ke saamne — paon andar doobe dikhen
     _hideoutFront(canvas);
     // Shaakhen player ke baad — neeche dabi laash lakdi ke neeche dikhe
     for (var i = 0; i < world.level.branches.length; i++) {
@@ -175,10 +203,99 @@ class WorldPainter extends CustomPainter {
     _fogAndVignette(canvas, size);
   }
 
+  void _terrainGrass(
+    Path grass,
+    Terrain tr,
+    double left,
+    double right,
+    double camX,
+    double viewW,
+    double t,
+  ) {
+    if (right <= left) return;
+    Grass.addTo(
+      grass,
+      0,
+      left,
+      right,
+      camX - 40,
+      camX + viewW + 40,
+      world.windAt,
+      t,
+      topAt: (x) => tr.topAt(x.clamp(tr.left, tr.right))!,
+    );
+  }
+
+  /// Khara paani: sath pe halki chamakti lehar, andar gehra andhera. Andar khare jism ke paas chhalle.
+  void _pools(Canvas canvas, double camX, double viewW) {
+    final t = world.time;
+    for (final p in world.level.pools) {
+      if (p.right < camX - 20 || p.left > camX + viewW + 20) continue;
+      double floor(double x) =>
+          max(p.surface, world.level.terrainTop(x) ?? p.surface + 80);
+      final body = Path()..moveTo(p.left, p.surface);
+      for (var x = p.left; x <= p.right; x += 3) {
+        body.lineTo(x, p.surface + sin(t * 1.6 + x * 0.09) * 0.6);
+      }
+      for (var x = p.right; x >= p.left; x -= 3) {
+        body.lineTo(x, floor(x) + 1);
+      }
+      body.close();
+      final bottom = p.surface + (p.deep ? 75 : 20);
+      canvas.drawPath(
+        body,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: const [Color(0xE0404346), Color(0xF6141516)],
+          ).createShader(Rect.fromLTRB(p.left, p.surface, p.right, bottom)),
+      );
+      // Sath ki chamak: toot'ti hui patli lakeerein, aahista behti
+      final shine = Paint()
+        ..color = const Color(0x88C9CDD1)
+        ..strokeWidth = 1
+        ..strokeCap = StrokeCap.round;
+      for (var k = 0; k < (p.right - p.left) / 14; k++) {
+        final u = (k * 14 + t * 6) % (p.right - p.left);
+        final x = p.left + u;
+        if (floor(x) <= p.surface + 1) continue;
+        final len = 3 + (sin(k * 3.7) * 0.5 + 0.5) * 6;
+        final y = p.surface + sin(t * 1.6 + x * 0.09) * 0.6;
+        canvas.drawLine(Offset(x, y), Offset(min(p.right, x + len), y), shine);
+      }
+      // Andar khare/chalte jism ke gird phailte chhalle
+      final ring = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9;
+      for (final b in [
+        if (world.state != PlayerState.dead) world.pos,
+        if (world.chaseActive)
+          for (final h in world.hunters) Offset(h.x, h.y),
+      ]) {
+        if (b.dx < p.left || b.dx > p.right || b.dy < p.surface + 2) continue;
+        for (var k = 0; k < 2; k++) {
+          final u = (t * 1.4 + k * 0.5 + b.dx * 0.01) % 1;
+          ring.color = Color.fromRGBO(210, 214, 218, 0.5 * (1 - u));
+          canvas.drawOval(
+            Rect.fromCenter(
+              center: Offset(b.dx, p.surface),
+              width: 14 + u * 30,
+              height: 2 + u * 3,
+            ),
+            ring,
+          );
+        }
+      }
+    }
+  }
+
   /// [x] pe [y] ki oonchai wali zameen hai?
-  bool _hasGround(double x, double y) => world.level.ground.any(
-    (s) => x >= s.left && x <= s.right && (s.top - y).abs() < 8,
-  );
+  bool _hasGround(double x, double y) =>
+      world.level.ground.any(
+        (s) => x >= s.left && x <= s.right && (s.top - y).abs() < 8,
+      ) ||
+      ((world.level.terrainTop(x) ?? -100) - y).abs() < 14;
 
   double _groundAt(double x) {
     var best = 400.0;
@@ -189,6 +306,8 @@ class WorldPainter extends CustomPainter {
         found = true;
       }
     }
+    final t = world.level.terrainTop(x);
+    if (t != null && (!found || t < best)) best = t;
     return best;
   }
 

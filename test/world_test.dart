@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:io';
 import 'dart:ui';
 
@@ -246,9 +247,11 @@ void main() {
         reason: 'chapter ${c.number}',
       );
       for (final cp in level.checkpoints) {
-        final onGround = level.solids.any(
-          (s) => s.top == cp.dy && cp.dx > s.left && cp.dx < s.right,
-        );
+        final onGround =
+            level.solids.any(
+              (s) => s.top == cp.dy && cp.dx > s.left && cp.dx < s.right,
+            ) ||
+            (level.terrainTop(cp.dx) ?? -1) == cp.dy;
         expect(onGround, isTrue, reason: 'chapter ${c.number} checkpoint $cp');
       }
       expect(
@@ -259,6 +262,146 @@ void main() {
       expectJumpable(level);
     }
     expect(chapters.length, 6);
+  });
+
+  group('jungle ki zameen', () {
+    Level noTiming(Level l) => Level(
+      solids: l.solids,
+      spikes: l.spikes,
+      traps: l.traps,
+      saws: const [],
+      checkpoints: l.checkpoints,
+      goalX: l.goalX,
+      terrain: l.terrain,
+      pools: l.pools,
+      wind: l.wind,
+    );
+
+    test(
+      'dhalan pe chal kar chadhte utarte hain, zameen pe tike rehte hain',
+      () {
+        final w = World(
+          const Level(
+            solids: [],
+            spikes: [],
+            saws: [],
+            checkpoints: [Offset(0, 400)],
+            goalX: 5000,
+            terrain: [
+              Terrain([
+                Offset(-500, 400),
+                Offset(100, 400),
+                Offset(300, 340),
+                Offset(500, 400),
+                Offset(900, 400),
+              ]),
+            ],
+          ),
+        );
+        final run = Input()..right = true;
+        var maxGap = 0.0;
+        for (var k = 0; k < 4 * 60; k++) {
+          w.update(1 / 60, run);
+          if (w.pos.dx > 20) {
+            maxGap = max(
+              maxGap,
+              (w.pos.dy - w.level.terrainTop(w.pos.dx)!).abs(),
+            );
+          }
+        }
+        expect(w.pos.dx, greaterThan(500)); // teela paar
+        expect(maxGap, lessThan(2)); // dhalan pe chipka raha, uchhla nahi
+      },
+    );
+
+    test('tez oonchi charhai chal kar nahi — koodna parta hai', () {
+      final w = World(
+        const Level(
+          solids: [],
+          spikes: [],
+          saws: [],
+          checkpoints: [Offset(0, 400)],
+          goalX: 5000,
+          terrain: [
+            Terrain([
+              Offset(-500, 400),
+              Offset(100, 400),
+              Offset(112, 350),
+              Offset(400, 350),
+            ]),
+          ],
+        ),
+      );
+      w.update(3, Input()..right = true);
+      expect(w.pos.dx, lessThan(112));
+    });
+
+    test(
+      'naale ke paani mein chaal dheemi, gehre talaab mein doob jata hai',
+      () {
+        final level = chapters.first.level!();
+        final shallow = level.pools.firstWhere((p) => !p.deep);
+        final x = (shallow.left + shallow.right) / 2;
+        final w = World(level)..pos = Offset(x, level.terrainTop(x)!);
+        w.update(0.05, Input());
+        final start = w.pos.dx;
+        w.update(0.5, Input()..right = true);
+        expect(w.pos.dx - start, lessThan(World.speed * 0.5 * 0.7));
+        expect(w.state, PlayerState.alive);
+
+        final deep = level.pools.firstWhere((p) => p.deep);
+        final d = World(level)
+          ..pos = Offset((deep.left + deep.right) / 2, deep.surface - 30);
+        d.update(1, Input());
+        expect(d.state, PlayerState.dead);
+        expect(d.deathKind, DeathKind.drown);
+      },
+    );
+
+    test('Chapter 1 shuru se aakhir tak khela ja sakta hai (bina mare)', () {
+      final level = noTiming(chapters.first.level!());
+      final w = World(level);
+      for (var k = 0; k < 90 * 60 && w.state == PlayerState.alive; k++) {
+        w.update(1 / 60, autopilot(w));
+      }
+      expect(w.deaths, 0, reason: 'mara: ${w.deathKind} at ${w.pos}');
+      expect(w.state, PlayerState.won);
+    });
+
+    test('Chapter 1 mein shikaari bhi poora raasta paar karte hain', () {
+      final level = noTiming(chapters.first.level!());
+      final w =
+          World(
+              Level(
+                solids: level.solids,
+                spikes: level.spikes,
+                traps: level.traps,
+                saws: const [],
+                checkpoints: level.checkpoints,
+                goalX: level.goalX,
+                terrain: level.terrain,
+                pools: level.pools,
+                chase: const Chase(startX: 0, throwEvery: 999),
+              ),
+            )
+            ..cinematic =
+                true; // hero na mare; sirf shikaariyon ka raasta dekhna hai
+      var furthest = 0.0;
+      // Hero chhup jaye, phir shikaari us ke oopar se aagay nikal jayen
+      for (var k = 0; k < 120 * 60 && !w.refugeDone; k++) {
+        w.update(1 / 60, autopilot(w));
+        furthest = max(furthest, w.hunters.last.x);
+        for (final b in w.hunters) {
+          expect(
+            b.y,
+            lessThan(level.deathY),
+            reason: 'shikaari gaddhay mein ${b.x}',
+          );
+        }
+      }
+      expect(w.state, PlayerState.won);
+      expect(furthest, greaterThan(level.hideout!.right));
+    });
   });
 
   group('peechha', () {
@@ -815,6 +958,8 @@ void main() {
 }
 
 void expectJumpable(Level level) {
+  // Ooncha-neecha zameen wale level asal khel kar jaanche jaate hain (neeche 'jungle ki zameen')
+  if (level.terrain.isNotEmpty) return;
   final jumpTime = 2 * World.jumpVelocity / World.gravity;
   final jumpHeight =
       World.jumpVelocity * World.jumpVelocity / (2 * World.gravity);

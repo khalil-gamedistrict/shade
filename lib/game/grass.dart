@@ -12,7 +12,8 @@ double _rand(int i, int salt) {
 class Grass {
   static const cell = 5.5; // har itne faasle pe ek guccha ho sakta hai
 
-  /// [top] zameen ki sateh, [from]..[to] dikhne wala hissa, [windAt] har jagah ki hawa
+  /// [top] zameen ki sateh (ya ooncha-neecha zameen ho to [topAt]), [from]..[to] dikhne wala hissa,
+  /// [windAt] har jagah ki hawa
   static void addTo(
     Path path,
     double top,
@@ -21,12 +22,14 @@ class Grass {
     double from,
     double to,
     double Function(double x) windAt,
-    double time,
-  ) {
+    double time, {
+    double Function(double x)? topAt,
+  }) {
     final a = max(left, from), b = min(right, to);
     if (a >= b) return;
+    double yAt(double x) => topAt?.call(x) ?? top;
 
-    _turf(path, top, a, b);
+    _turf(path, yAt, a, b);
 
     for (var i = (a / cell).floor(); i * cell < b; i++) {
       if (_rand(i, 1) > 0.85) continue; // kahin kahin khaali jagah
@@ -45,7 +48,7 @@ class Grass {
         _blade(
           path,
           x + (r1 - 0.5) * 3,
-          top + 1.5,
+          yAt(x) + 1.5,
           h,
           0.9 + r2 * 1.1,
           spread,
@@ -60,7 +63,7 @@ class Grass {
         final tip = _blade(
           path,
           x,
-          top + 1.5,
+          yAt(x) + 1.5,
           h,
           0.55,
           (_rand(i, 9) - 0.5) * 0.4,
@@ -120,14 +123,19 @@ class Grass {
   }
 
   /// Zameen ka kinara bilkul seedha nahi hota — chhote chhote ubhaar
-  static void _turf(Path path, double top, double a, double b) {
-    path.moveTo(a, top + 2);
+  static void _turf(
+    Path path,
+    double Function(double x) yAt,
+    double a,
+    double b,
+  ) {
+    path.moveTo(a, yAt(a) + 2);
     for (var x = a; x <= b; x += 3) {
       final bump = (sin(x * 0.11) * 0.6 + sin(x * 0.37 + 1.7) * 0.4 + 1) * 1.3;
-      path.lineTo(x, top - bump);
+      path.lineTo(x, yAt(x) - bump);
     }
     path
-      ..lineTo(b, top + 2)
+      ..lineTo(b, yAt(b) + 2)
       ..close();
   }
 }

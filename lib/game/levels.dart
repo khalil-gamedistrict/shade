@@ -1,8 +1,82 @@
-// Naye chapters ke levels (1 aur 4 asal level se kaate gaye hain — world.dart ka Level.first).
+// Chapters ke levels (4 asal level se kaata gaya hai — world.dart ka Level.first).
 // Jump ~117 oonchi, ~136 lambi: gaddhay ≤ 100, seedhiyan ≤ 60, saamne ki hawa mein gaddhay chhote.
 import 'dart:ui' show Offset, Rect;
 
 import 'world.dart';
+
+/// 1 · The Hunt — asli jungle ki zameen: ubar-khaabar farsh, teela, keechar wala naala (paani mein chaal
+/// dheemi), chattan jis pe koodna parta hai aur oopar jhoolta lakkar, khai, kaanton wala gadha, gehra talaab
+/// (koodo warna doobo), charhai, phir aakhri zameen jahan chhupne ka gaddha hai.
+Level hunt() {
+  const a = Terrain([
+    Offset(-600, 400),
+    Offset(120, 400),
+    Offset(220, 400),
+    Offset(300, 404),
+    Offset(380, 401),
+    Offset(470, 386),
+    Offset(560, 352),
+    Offset(640, 332), // teele ki choti
+    Offset(700, 336),
+    Offset(780, 374),
+    Offset(830, 408), // naala
+    Offset(900, 416),
+    Offset(960, 410),
+    Offset(1010, 392),
+    Offset(1060, 368),
+    Offset(1100, 354),
+    Offset(1113, 350),
+    Offset(1121, 319), // chattan: seedhi charhai — koodna parta hai
+    Offset(1150, 314),
+    Offset(1200, 318),
+    Offset(1240, 321),
+    Offset(1262, 330), // khai ka kinara
+  ]);
+  const b = Terrain([
+    Offset(1350, 372), // khai ke paar, neeche
+    Offset(1420, 380),
+    Offset(1520, 392),
+    Offset(1600, 396),
+    Offset(1690, 390),
+    Offset(1760, 398),
+    Offset(1810, 420), // kaanton wala gadha
+    Offset(1860, 422),
+    Offset(1915, 400),
+    Offset(1975, 396),
+    Offset(2000, 400), // gehra talaab
+    Offset(2022, 440),
+    Offset(2045, 478),
+    Offset(2075, 478),
+    Offset(2098, 440),
+    Offset(2118, 400),
+    Offset(2160, 392),
+    Offset(2230, 374),
+    Offset(2290, 362),
+    Offset(2342, 364),
+  ]);
+  double y(double x) => b.topAt(x) ?? a.topAt(x)!;
+  return Level(
+    terrain: const [a, b],
+    pools: const [Pool(808, 985, 402), Pool(2004, 2114, 406, deep: true)],
+    solids: const [
+      Rect.fromLTWH(2420, 400, 340, 200), // aakhri zameen (chhupne ka gaddha)
+    ],
+    spikes: [Rect.fromLTWH(1812, y(1836) - 14, 48, 16)],
+    traps: [Rect.fromLTWH(320, y(337) - 10, 34, 10)],
+    saws: const [Saw(2490, 320, speed: 1.5)],
+    pendulums: const [Pendulum(Offset(1190, 122), 150, speed: 1.4)],
+    branches: const [Branch(1600, 1470)],
+    checkpoints: [
+      const Offset(100, 400),
+      Offset(1400, y(1400)),
+      Offset(2200, y(2200)),
+    ],
+    goalX: 2580,
+    chase: const Chase(startX: 500),
+    wind: const Profile([(0, 0.2), (1500, 0.45), (2400, 0.6)]),
+    rain: const Profile([(0, 0), (1300, 0.15), (2100, 0.55), (2700, 0.8)]),
+  );
+}
 
 /// 2 · Ashes — jalta hua gaon: aag ke sholay, girte jalte shehteer, peeche jalti jhonpriyan
 Level ashes() => const Level(

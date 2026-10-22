@@ -14,6 +14,7 @@ class Sound {
       ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'],
       0.35,
     ),
+    GameEvent.wade: (['wade1', 'wade2', 'wade3', 'wade4'], 0.45),
     GameEvent.jump: (['jump'], 0.5),
     GameEvent.land: (['land'], 0.55),
     GameEvent.checkpoint: (['checkpoint'], 0.45),
