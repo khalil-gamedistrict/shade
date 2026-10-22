@@ -184,7 +184,18 @@ class _TrailerScreenState extends State<TrailerScreen>
     _t = 0;
   }
 
+  /// Kisi frame mein error aaye to report karo, lekin ticker kabhi na ruke (warna screen jam jaati hai)
   void _onFrame(Duration elapsed) {
+    try {
+      _tick(elapsed);
+    } catch (e, st) {
+      FlutterError.reportError(
+        FlutterErrorDetails(exception: e, stack: st, library: 'shade'),
+      );
+    }
+  }
+
+  void _tick(Duration elapsed) {
     final dt = ((elapsed - _last).inMicroseconds / 1e6)
         .clamp(0, 0.05)
         .toDouble();

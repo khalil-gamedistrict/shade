@@ -56,7 +56,18 @@ class _GameScreenState extends State<GameScreen>
     HardwareKeyboard.instance.addHandler(_onKey);
   }
 
+  /// Kisi frame mein error aaye to report karo, lekin ticker kabhi na ruke (warna screen jam jaati hai)
   void _onFrame(Duration elapsed) {
+    try {
+      _tick(elapsed);
+    } catch (e, st) {
+      FlutterError.reportError(
+        FlutterErrorDetails(exception: e, stack: st, library: 'shade'),
+      );
+    }
+  }
+
+  void _tick(Duration elapsed) {
     final dt = (elapsed - last).inMicroseconds / 1e6;
     last = elapsed;
     final step = dt.clamp(0, 0.05).toDouble();

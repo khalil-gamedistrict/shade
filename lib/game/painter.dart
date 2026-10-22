@@ -48,9 +48,8 @@ class WorldPainter extends CustomPainter {
     canvas.save();
     canvas.scale(scale);
 
-    jungle.prepare(
-      scale,
-    ); // pehli dafa saari tasveerein ek saath (baad mein kabhi nahi atke)
+    jungle.prepare(scale);
+    jungle.warmUp(); // tasveerein thori thori — pehla frame halka
 
     // Door ka jungle + door ki baarish, phir dhund
     jungle.drawFar(canvas, camX, viewW, wind, t, scale);

@@ -71,6 +71,21 @@ class SpriteCache {
     );
   }
 
+  /// (tasveeron ki ginti, kul memory bytes, sab se bari) — memory ka hisaab
+  (int, int, String) stats() {
+    var bytes = 0, big = 0;
+    var bigName = '';
+    for (final MapEntry(:key, :value) in _m.entries) {
+      final b = value.$1.width * value.$1.height * 4;
+      bytes += b;
+      if (b > big) {
+        big = b;
+        bigName = '$key ${value.$1.width}x${value.$1.height}';
+      }
+    }
+    return (_m.length, bytes, bigName);
+  }
+
   void clear() {
     for (final (img, _) in _m.values) {
       img.dispose();
@@ -170,7 +185,10 @@ class Jungle {
   );
 
   // Har layer ki tasveer ki resolution (screen pixels har view unit) — door wali kam = naram/fade
-  double _res(double scale, double factor) => min(3.0, scale * dpr * factor);
+  // Phone ki density pe poori resolution ki zaroorat nahi (khaas kar door ke dhundle darakht) — hadd lagao,
+  // warna 500 tasveerein 300MB+ graphics memory kha jaati hain aur phone atak jata hai
+  double _res(double scale, double factor) =>
+      min(1.15 * factor, scale * dpr * factor);
 
   Sprite _tree(TreeLayer layer, int key, double res, {required bool leaves}) {
     return cache.get('tree${layer.seed}:$key:${leaves ? 1 : 0}', res, () {
@@ -281,32 +299,55 @@ class Jungle {
 
   /// Screen ka size badle to tasveerein naye size pe; pehli dafa sab ek saath bana lo,
   /// taake khelte waqt kabhi tasveer banne ki wajah se frame na atke
+  final _warmQueue = <void Function()>[];
+
+  /// Screen ka size badle to tasveerein naye size pe. Sab ek frame mein nahi — [warmUp] har frame thori
+  /// thori banata hai (phone pe pehla frame atak na jaye); jo dikh rahi hon woh waise bhi foran ban jaati hain.
   void prepare(double scale) {
     if ((scale - _lastScale).abs() < 0.01) return;
     _lastScale = scale;
     cache.clear();
+    _warmQueue.clear();
     for (final (layer, f) in [(far, 0.45), (front, 0.8)]) {
       for (var v = 0; v < layer.variants!; v++) {
-        _tree(layer, v, _res(scale, f), leaves: true);
+        _warmQueue.add(() => _tree(layer, v, _res(scale, f), leaves: true));
       }
     }
     for (final (layer, f) in [(mid, 0.6), (near, 1.0)]) {
       for (var v = 0; v < layer.variants!; v++) {
         for (var p = 0; p < layer.tree(v).pieces.length; p++) {
-          _piece(layer, v, p, _res(scale, f));
+          _warmQueue.add(() => _piece(layer, v, p, _res(scale, f)));
         }
       }
     }
     for (final type in _Plant.values) {
       for (var v = 0; v < 6; v++) {
-        _plant(type, v, _res(scale, 0.45), _undergrowthFar);
-        _plant(type, v, _res(scale, 0.6), _undergrowthMid);
-        _plant(type, v, _res(scale, 1), _groundColor);
-        _plant(type, v, _res(scale, 0.8), _frontColor);
+        _warmQueue.add(
+          () => _plant(type, v, _res(scale, 0.45), _undergrowthFar),
+        );
+        _warmQueue.add(
+          () => _plant(type, v, _res(scale, 0.6), _undergrowthMid),
+        );
+        _warmQueue.add(() => _plant(type, v, _res(scale, 1), _groundColor));
+        _warmQueue.add(() => _plant(type, v, _res(scale, 0.8), _frontColor));
       }
     }
     for (var v = 0; v < 5; v++) {
-      _vine(v, _res(scale, 1));
+      _warmQueue.add(() => _vine(v, _res(scale, 1)));
+    }
+  }
+
+  /// Har frame zyada se zyada [count] tasveerein pehle se bana lo
+  void warmUp([int count = 6]) {
+    for (var i = 0; i < count && _warmQueue.isNotEmpty; i++) {
+      _warmQueue.removeLast()();
+    }
+  }
+
+  /// Sab tasveerein abhi bana lo (tests aur screenshots ke liye)
+  void warmAll() {
+    while (_warmQueue.isNotEmpty) {
+      _warmQueue.removeLast()();
     }
   }
 
