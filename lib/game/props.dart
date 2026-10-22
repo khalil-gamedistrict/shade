@@ -339,3 +339,114 @@ void drawBridge(Canvas canvas, Rect r, double t, double wind) {
     canvas.drawRect(Rect.fromLTWH(x - 2, r.top - 32, 4, 34), _fill);
   }
 }
+
+/// Panah: bari chattan jis ka oopar wala hissa chhajje ki tarah aage nikla hai. [roof] chhajja, [wall] pichhli
+/// deewar (dono asal mein thos hain). Kinare ubar-khaabar, chhajje se latakti jarein, kinare se tapakte qatre,
+/// neeche halka saaya — andar sookha.
+void drawRefuge(
+  Canvas canvas,
+  Rect roof,
+  Rect wall,
+  double ground,
+  double t,
+  double wind,
+  double rain,
+) {
+  // Neeche ka saaya (panah ka ehsaas)
+  final shelter = Rect.fromLTRB(roof.left + 6, roof.bottom, wall.left, ground);
+  canvas.drawRect(
+    shelter,
+    Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0x55000000), Color(0x22000000)],
+      ).createShader(shelter),
+  );
+  // Chattan: deewar neeche se, oopar se ubhra hua, aage nukeela chhajja
+  final rock = Path()..moveTo(wall.right + 8, ground);
+  final topY = roof.top;
+  final pts = <Offset>[
+    Offset(wall.right + 10, ground - 40),
+    Offset(wall.right + 4, topY + 14),
+    Offset(wall.right - 10, topY - 6),
+    Offset(wall.center.dx, topY - 12),
+    Offset(roof.center.dx + 20, topY - 4),
+    Offset(roof.center.dx - 25, topY - 9),
+    Offset(roof.left + 18, topY - 2),
+    Offset(roof.left - 4, topY + 8), // aage ki nok
+    Offset(roof.left + 2, roof.bottom + 2),
+    Offset(roof.left + 30, roof.bottom - 2),
+    Offset(roof.center.dx, roof.bottom + 3),
+    Offset(wall.left - 12, roof.bottom + 6),
+    Offset(wall.left - 4, roof.bottom + 30), // deewar ke saath gola
+    Offset(wall.left, ground - 20),
+    Offset(wall.left - 6, ground),
+  ];
+  // Har kinare pe chhote ubhaar aur gadhe — qudrati patthar, seedhi lakeerein nahi
+  for (var i = 0; i < pts.length; i++) {
+    final a = i == 0 ? Offset(wall.right + 8, ground) : pts[i - 1];
+    final b = pts[i];
+    for (var k = 1; k <= 3; k++) {
+      final f = k / 4;
+      final n = Offset(-(b - a).dy, (b - a).dx) / max(1, (b - a).distance);
+      final p = Offset.lerp(a, b, f)! + n * (_hash(i * 5 + k, 41) - 0.5) * 7;
+      rock.lineTo(p.dx, p.dy);
+    }
+    rock.lineTo(b.dx, b.dy);
+  }
+  rock.close();
+  canvas.drawPath(rock, _fill);
+  // Chattan ki daraarein (halki si)
+  final crack = Paint()
+    ..color = const Color(0x22FFFFFF)
+    ..strokeWidth = 0.8
+    ..style = PaintingStyle.stroke;
+  canvas.drawPath(
+    Path()
+      ..moveTo(wall.center.dx + 6, topY + 6)
+      ..lineTo(wall.center.dx - 2, topY + 30)
+      ..lineTo(wall.center.dx + 8, topY + 52),
+    crack,
+  );
+  // Chhajje se latakti jarein aur bailen — hawa mein halki hilti hui
+  final root = Paint()
+    ..color = _ink
+    ..strokeWidth = 1.2
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  for (var k = 0; k < 7; k++) {
+    final x = roof.left + 12 + k * (roof.width - 50) / 6;
+    final len = 10 + _hash(k, 31) * 26;
+    final sway = sin(t * 1.4 + k) * 2 + wind * 4;
+    final top = Offset(x, roof.bottom + 1);
+    canvas.drawPath(
+      Path()
+        ..moveTo(top.dx, top.dy)
+        ..quadraticBezierTo(
+          top.dx + sway * 0.4,
+          top.dy + len * 0.5,
+          top.dx + sway,
+          top.dy + len,
+        ),
+      root,
+    );
+  }
+  // Baarish mein chhajje ke kinare se tapakte qatre
+  if (rain > 0.1) {
+    final drop = Paint()
+      ..color = const Color(0xFFD5DADD).withValues(alpha: 0.75 * rain);
+    for (var k = 0; k < 4; k++) {
+      final u = (t * 1.2 + _hash(k, 33)) % 1;
+      final x = roof.left + 4 + _hash(k, 34) * 30;
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(x, roof.bottom + 4 + u * (ground - roof.bottom - 4)),
+          width: 1.4,
+          height: 3.2,
+        ),
+        drop,
+      );
+    }
+  }
+}

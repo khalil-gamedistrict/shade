@@ -81,13 +81,17 @@ class _GameScreenState extends State<GameScreen>
     }
     world.events.clear();
     frame.value++;
-    if (world.state == PlayerState.fighting) setState(() {}); // waqt ki patti
+    // Larai mein waqt ki patti, panah mein line aur fade — har frame
+    final animating =
+        world.state == PlayerState.fighting || world.state == PlayerState.won;
+    if (animating) setState(() {});
     if (world.state != shownState) {
       setState(() => shownState = world.state);
       // Roshni tak pahunch gaya — thori der baad agla chapter
       if (world.state == PlayerState.won && !_leaving) {
         _leaving = true;
-        Future.delayed(const Duration(milliseconds: 2500), () {
+        Future.delayed(const Duration(milliseconds: 7600), () {
+          // panah ka manzar
           if (mounted) widget.onComplete();
         });
       }
@@ -264,11 +268,36 @@ class _GameScreenState extends State<GameScreen>
               bottom: 28,
               child: Center(child: _breakFreeButton()),
             ),
+          if (shownState == PlayerState.won)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 70,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity:
+                      ((world.refugeTime - 2.2).clamp(0.0, 0.8) / 0.8) *
+                      (1 - ((world.refugeTime - 5.4).clamp(0.0, 0.6) / 0.6)),
+                  child: const Text(
+                    'Safe — for now.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      letterSpacing: 4,
+                      color: Color(0xFFEDEDED),
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // Chapter khatam: screen aahista kaali ho jaati hai
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: shownState == PlayerState.won ? 1 : 0,
-              duration: const Duration(milliseconds: 2200),
+              opacity: shownState == PlayerState.won && world.refugeTime > 5.8
+                  ? 1
+                  : 0,
+              duration: const Duration(milliseconds: 1500),
               child: const ColoredBox(
                 color: Colors.black,
                 child: SizedBox.expand(),

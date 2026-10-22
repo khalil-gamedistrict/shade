@@ -581,6 +581,35 @@ void main() {
       expect(w.state, PlayerState.fighting);
     });
   });
+
+  group('panah', () {
+    test('har chapter ke aakhir mein panah (chattan ka chhajja) hai', () {
+      for (final c in chapters) {
+        expect(c.level!().refuge.length, 2, reason: c.title);
+      }
+    });
+
+    test('goal pe hero chhajje ke neeche baith jata hai, shikaari dhoond kar laut jaate hain', () {
+      final level = chapters.first.level!();
+      final w = World(level)
+        ..pos = Offset(level.goalX - 30, 400)
+        ..chaseActive = true
+        ..hunterX = level.goalX - 400;
+      final run = Input()..right = true;
+      while (w.state != PlayerState.won) {
+        w.update(1 / 60, run);
+        w.spears.clear();
+      }
+      w.update(2.5, Input());
+      expect(w.sitting, isTrue);
+      expect(w.pos.dx, closeTo(level.goalX + 70, 1));
+      final nearest = w.hunterX;
+      w.update(4, Input());
+      expect(w.hunterDir, -1); // laut rahe hain
+      expect(w.hunterX, lessThan(nearest - 100));
+      expect(w.state, PlayerState.won); // panah mein mehfooz
+    });
+  });
 }
 
 void expectJumpable(Level level) {

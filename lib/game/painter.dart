@@ -98,6 +98,32 @@ class WorldPainter extends CustomPainter {
         t,
       );
     }
+    final refuge = level.refuge;
+    if (refuge.length == 2 &&
+        refuge[1].right > camX - 60 &&
+        refuge[0].left < camX + viewW + 60) {
+      drawRefuge(
+        canvas,
+        refuge[0],
+        refuge[1],
+        refuge[1].bottom,
+        t,
+        world.windAt(refuge[0].center.dx),
+        weather.rain,
+      );
+      final top = Path();
+      Grass.addTo(
+        top,
+        refuge[0].top - 3,
+        refuge[0].left + 20,
+        refuge[1].right - 6,
+        camX - 40,
+        camX + viewW + 40,
+        world.windAt,
+        t,
+      );
+      canvas.drawPath(top, _black);
+    }
     canvas.drawPath(grass, _black);
     for (final s in world.level.spikes) {
       _spikes(canvas, s);
@@ -125,7 +151,10 @@ class WorldPainter extends CustomPainter {
         lit: world.level.checkpoints.indexOf(c) <= world.checkpoint,
       );
     }
-    _goalLight(canvas);
+    // Panah ho to wahi manzil ki nishani; warna purani roshni
+    if (world.level.refuge.isEmpty) {
+      _goalLight(canvas);
+    }
     extra?.call(canvas);
     _hunters(canvas, camX, viewW);
     _player(canvas);
@@ -545,6 +574,29 @@ class WorldPainter extends CustomPainter {
 
   void _player(Canvas canvas) {
     final dir = world.facingRight ? 1.0 : -1.0;
+    if (world.state == PlayerState.won && world.sitting) {
+      // Chattan se tek laga kar baitha, saans leta hua
+      final breathe = sin(world.time * 2.2) * 0.6;
+      drawFigure(
+        canvas,
+        look: Look.hero,
+        foot: world.pos + Offset(0, 13 + breathe),
+        dir: 1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: world.time,
+        wind: 0,
+        pose: const FigurePose(
+          (1.5, -2.3),
+          (1.35, -2.1),
+          (1.0, 0.9),
+          (0.7, 1.0),
+          lean: -0.14,
+        ),
+      );
+      return;
+    }
     if (world.state == PlayerState.fighting) {
       final (pose, dx) = heroFight(world.fightTime);
       drawFigure(
@@ -752,7 +804,7 @@ class WorldPainter extends CustomPainter {
         canvas,
         look: looks[i],
         foot: Offset(x, footY),
-        dir: 1,
+        dir: world.hunterDir, // panah ke paas idhar udhar dekhte, phir laut'te
         phase: world.time * 9.5 + i * 1.7,
         moving: world.hunterMoving,
         inAir: !onGround,

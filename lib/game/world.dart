@@ -173,6 +173,24 @@ class Level {
 
   double get width => solids.fold(0.0, (m, s) => max(m, s.right));
 
+  static final _refugeCache = Expando<List<Rect>>();
+
+  /// Panah: goal pe ek bari chattan — oopar chhajja (baarish rokta hai), peeche deewar. [0] chhajja, [1] deewar.
+  /// Trailer ke manzar jaise levels (goal bahut door) mein khaali.
+  List<Rect> get refuge => _refugeCache[this] ??= () {
+    var ground = double.infinity;
+    for (final s in solids) {
+      if (goalX >= s.left && goalX + 180 <= s.right && s.top < ground) {
+        ground = s.top;
+      }
+    }
+    if (ground == double.infinity) return const <Rect>[];
+    return [
+      Rect.fromLTWH(goalX - 10, ground - 92, 175, 24), // chhajja
+      Rect.fromLTWH(goalX + 120, ground - 92, 55, 92), // pichhli deewar
+    ];
+  }();
+
   /// Level ka [from]..[to] hissa alag chapter ke liye: sab kuch khiska kar [from] ko x=100 pe le aata hai,
   /// aur shuru mein thori zameen jor deta hai (taake player peeche gir na sake).
   /// [from] kisi zameen (top 400) ke shuru pe hona chahiye.
@@ -426,6 +444,13 @@ class World {
   static const spearGravity = 620.0;
   bool chaseActive = false;
 
+  // Panah: hero chhajje ke neeche baith jata hai, shikaari aa kar dhoondhte hain aur laut jaate hain
+  double refugeTime = 0;
+  bool sitting = false;
+  double hunterDir = 1; // shikaariyon ka munh (laut'te waqt -1)
+  int _refugeStage = 0; // 0 = aa rahe, 1 = dhoondh rahe, 2 = laut rahe
+  double _searchStart = 0;
+
   // Larai: pakre jaane pe fauran maut nahi — [fightDuration] tak larai, phir maut.
   // Is dauraan ek dafa (ad dekh kar) chhoot kar bhaag sakte hain.
   static const fightDuration = 3.4;
@@ -519,6 +544,7 @@ class World {
   List<Rect> solidsNow() => [
     ...level.solids,
     for (final m in level.movers) m.rectAt(time),
+    ...level.refuge,
     for (var i = 0; i < level.rocks.length; i++)
       if (rockState[i] == 2) rockRect(i),
   ];
@@ -547,7 +573,10 @@ class World {
 
   void _step(double dt, Input input) {
     time += dt;
-    if (state == PlayerState.won) return;
+    if (state == PlayerState.won) {
+      _updateRefuge(dt);
+      return;
+    }
     if (state == PlayerState.fighting) {
       _updateFight(dt);
       return;
@@ -881,6 +910,49 @@ class World {
       }
     }
     spears.removeWhere((sp) => sp.age > 6 || sp.y > level.deathY);
+  }
+
+  void _updateRefuge(double dt) {
+    refugeTime += dt;
+    // Hero aahista chal kar chhajje ke neeche, phir chattan se tek laga kar baith jata hai
+    final seat = level.goalX + 70;
+    if (pos.dx < seat) {
+      facingRight = true;
+      vx = 80;
+      pos = Offset(min(seat, pos.dx + 80 * dt), pos.dy);
+      walkPhase += dt * 6;
+      grounded = true;
+    } else {
+      vx = 0;
+      walkPhase = 0;
+      sitting = true;
+    }
+    if (!chaseActive) return;
+    // Shikaari: kuch faasle tak aate hain, idhar udhar dekhte hain, phir laut jaate hain
+    final stopAt = level.goalX - 210;
+    switch (_refugeStage) {
+      case 0:
+        hunterDir = 1;
+        hunterMoving = hunterX < stopAt;
+        if (hunterMoving) {
+          hunterX = min(stopAt, hunterX + 128 * dt);
+        } else {
+          _refugeStage = 1;
+          _searchStart = refugeTime;
+        }
+      case 1:
+        hunterMoving = false;
+        final k = refugeTime - _searchStart;
+        hunterDir = (k * 1.6).floor().isEven ? 1 : -1; // idhar udhar dekhna
+        if (k > 1.9) {
+          _refugeStage = 2;
+          events.add(GameEvent.shout); // jhunjhla kar wapas
+        }
+      default:
+        hunterDir = -1;
+        hunterMoving = true;
+        hunterX -= 150 * dt;
+    }
   }
 
   void _startFight() {

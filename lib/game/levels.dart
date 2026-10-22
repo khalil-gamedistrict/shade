@@ -16,7 +16,7 @@ Level ashes() => const Level(
     Rect.fromLTWH(1600, 400, 700, 200),
     Rect.fromLTWH(1900, 320, 40, 80), // jali hui deewar
     // gaddha 2300–2390
-    Rect.fromLTWH(2390, 400, 710, 200),
+    Rect.fromLTWH(2390, 400, 820, 200),
   ],
   spikes: [],
   saws: [],
@@ -55,7 +55,7 @@ Level river() => const Level(
     Rect.fromLTWH(1530, 400, 70, 200),
     Rect.fromLTWH(1860, 400, 540, 200),
     // paani 2400–2490
-    Rect.fromLTWH(2490, 400, 610, 200),
+    Rect.fromLTWH(2490, 400, 720, 200),
   ],
   movers: [
     Mover(
@@ -107,7 +107,7 @@ Level cliffs() => const Level(
     Rect.fromLTWH(2190, 360, 310, 240),
     // bari khai 2500–3000: hilte takhte aur ek patli chattan
     Rect.fromLTWH(2700, 330, 80, 18),
-    Rect.fromLTWH(3000, 360, 600, 240),
+    Rect.fromLTWH(3000, 360, 720, 240),
   ],
   movers: [
     Mover(Rect.fromLTWH(2560, 345, 80, 16), dy: 40, speed: 1.1),

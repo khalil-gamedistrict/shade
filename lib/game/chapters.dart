@@ -12,10 +12,10 @@ class Chapter {
 }
 
 final chapters = <Chapter>[
-  Chapter(1, 'The Hunt', () => Level.first().slice(0, 2300, goal: 2280)),
+  Chapter(1, 'The Hunt', () => Level.first().slice(0, 2300, goal: 2200)),
   const Chapter(2, 'Ashes', ashes),
   const Chapter(3, 'The River', river),
-  Chapter(4, 'The Storm', () => Level.first().slice(2160, 7300, goal: 7150)),
+  Chapter(4, 'The Storm', () => Level.first().slice(2160, 7300, goal: 7050)),
   const Chapter(5, 'The Cliffs', cliffs),
   const Chapter(6, 'Homecoming', homecoming),
 ];

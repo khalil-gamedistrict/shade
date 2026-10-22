@@ -136,7 +136,8 @@ class Weather {
 
   double? _groundTop(Level level, double x) {
     double? best;
-    for (final s in level.solids) {
+    for (final s in [...level.solids, ...level.refuge]) {
+      // chhajje pe bhi baarish girti hai
       if (x >= s.left && x <= s.right && (best == null || s.top < best)) {
         best = s.top;
       }
