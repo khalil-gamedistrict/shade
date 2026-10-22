@@ -14,12 +14,14 @@ const buildInfo = String.fromEnvironment('BUILD_INFO', defaultValue: 'local');
 
 class GameScreen extends StatefulWidget {
   final Level level;
+  final Jungle jungle; // darakhton ki tasveerein — saare chapters mein ek hi
   final Sound? sound; // tests mein null, kyunke wahan audio plugin nahi hota
   final VoidCallback onComplete; // chapter khatam
   final VoidCallback onExit; // menu pe wapas
   const GameScreen({
     super.key,
     required this.level,
+    required this.jungle,
     required this.onComplete,
     required this.onExit,
     this.sound,
@@ -39,7 +41,7 @@ class _GameScreenState extends State<GameScreen>
   PlayerState shownState = PlayerState.alive;
   Sound? get sound => widget.sound;
   bool _leaving = false;
-  final jungle = Jungle();
+  Jungle get jungle => widget.jungle;
   final weather = Weather();
 
   @override

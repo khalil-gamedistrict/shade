@@ -406,6 +406,10 @@ class World {
   ]; // teen shikaari, aagay wale se itna peeche
   static const spearGravity = 620.0;
   bool chaseActive = false;
+
+  /// Trailer ke liye: maut nahi hoti, aur peechha band kiya ja sakta hai
+  bool cinematic = false;
+  bool allowChase = true;
   bool hunterMoving = false; // daur rahe hain ya gaddhay ke kinare khare
   double hunterX = -1000; // sab se aagay wala shikaari
   double _throwTimer = 0;
@@ -599,6 +603,7 @@ class World {
   }
 
   DeathKind? _hazard() {
+    if (cinematic) return null;
     final r = playerRect.deflate(3); // thori riayat
     final facing = facingRight ? 1.0 : -1.0;
     final water = level.waterY;
@@ -678,7 +683,7 @@ class World {
 
   void _updateChase(double dt) {
     final chase = level.chase;
-    if (chase == null) return;
+    if (chase == null || !allowChase) return;
     if (!chaseActive) {
       if (pos.dx < chase.startX) return;
       chaseActive = true;

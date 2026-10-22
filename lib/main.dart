@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'game/chapters.dart';
+import 'game/jungle.dart';
 import 'game/sound.dart';
 import 'ui/game_screen.dart';
 import 'ui/menu.dart';
+import 'ui/trailer.dart';
 
 // Testing ke liye sound band karna ho: --dart-define=SOUND=false
 const soundEnabled = bool.fromEnvironment('SOUND', defaultValue: true);
@@ -34,7 +36,7 @@ class ShadeApp extends StatelessWidget {
   }
 }
 
-enum _Phase { title, card, play, soon, ending }
+enum _Phase { trailer, title, card, play, soon, ending }
 
 /// Game ka safar: title → chapter ka naam → khelna → agla chapter (ya "jald aa raha hai")
 class ShadeHome extends StatefulWidget {
@@ -48,7 +50,9 @@ class ShadeHome extends StatefulWidget {
 class _ShadeHomeState extends State<ShadeHome> {
   final progress = Progress();
   Sound? sound; // saare chapters ke liye ek hi — loops beech mein nahi tootte
-  _Phase phase = _Phase.title;
+  _Phase phase =
+      _Phase.trailer; // har dafa khulne pe pehle trailer (skip ho sakta hai)
+  final jungle = Jungle(); // darakhton ki tasveerein ek dafa — trailer aur saare chapters mein
   Chapter chapter = chapters.first;
 
   @override
@@ -65,6 +69,7 @@ class _ShadeHomeState extends State<ShadeHome> {
   }
 
   void _open(Chapter c) => setState(() {
+    if (!progress.unlocked(c.number)) return; // band chapter
     chapter = c;
     phase = c.ready ? _Phase.card : _Phase.soon;
   });
@@ -86,6 +91,12 @@ class _ShadeHomeState extends State<ShadeHome> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
       child: switch (phase) {
+        _Phase.trailer => TrailerScreen(
+          key: const ValueKey('trailer'),
+          jungle: jungle,
+          sound: sound,
+          onDone: _toTitle,
+        ),
         _Phase.title => TitleScreen(
           key: const ValueKey('title'),
           progress: progress,
@@ -99,6 +110,7 @@ class _ShadeHomeState extends State<ShadeHome> {
         _Phase.play => GameScreen(
           key: ValueKey('play${chapter.number}'),
           level: chapter.level!(),
+          jungle: jungle,
           sound: sound,
           onComplete: _completed,
           onExit: _toTitle,

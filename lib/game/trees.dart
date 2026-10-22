@@ -42,6 +42,9 @@ class Tree {
   final _nodes = <_Node>[];
   final _leaves = <_Leaf>[];
   final double stiffness; // mota tana kam hilta hai
+  final double
+  leafSize; // patte kitne bare (door ke darakhton pe bare, taake ghane dikhen)
+  final double leafDensity; // har tehni pe kitne zyada patte
 
   // Har frame ke hisaab kitaab ke liye (allocation se bachne ke liye pehle se bane)
   late final Float64List _ax, _ay, _bx, _by, _abs;
@@ -54,6 +57,8 @@ class Tree {
     int maxDepth = 7,
     double leafiness = 0.6,
     double thickness = 1,
+    this.leafSize = 1,
+    this.leafDensity = 1,
   }) : stiffness = 0.8 + Random(seed).nextDouble() * 0.4 {
     final r = Random(seed);
     final baseW = height * (0.045 + r.nextDouble() * 0.02) * thickness;
@@ -150,13 +155,17 @@ class Tree {
     if (depth >= maxDepth - 2 && depth < maxDepth && len >= 6) {
       // Aakhri se pehle wali tehni pe bhi kuch patte
       if (r.nextDouble() < leafiness * 0.85) {
-        for (var i = 0, n = 3 + r.nextInt(4); i < n; i++) {
+        for (
+          var i = 0, n = ((3 + r.nextInt(4)) * leafDensity).round();
+          i < n;
+          i++
+        ) {
           _leaves.add(
             _Leaf(
               me,
               0.3 + r.nextDouble() * 0.7,
               (r.nextDouble() - 0.5) * 2.6,
-              5 + r.nextDouble() * 4,
+              (5 + r.nextDouble() * 4) * leafSize,
               r.nextDouble() * 6.28,
             ),
           );
@@ -166,14 +175,14 @@ class Tree {
     if (depth >= maxDepth || len < 6) {
       // Aakhri bareek tehni: patton ka guccha
       if (r.nextDouble() < leafiness) {
-        final count = 9 + r.nextInt(7);
+        final count = ((9 + r.nextInt(7)) * leafDensity).round();
         for (var i = 0; i < count; i++) {
           _leaves.add(
             _Leaf(
               me,
               0.2 + r.nextDouble() * 0.85,
               (r.nextDouble() - 0.5) * 2.6,
-              6 + r.nextDouble() * 6,
+              (6 + r.nextDouble() * 6) * leafSize,
               r.nextDouble() * 6.28,
             ),
           );
@@ -379,7 +388,12 @@ class Tree {
 class TreeLayer {
   final double parallax, spacing, scale;
   final int maxDepth, seed;
-  final double leafiness, minHeight, maxHeight, thickness;
+  final double leafiness,
+      minHeight,
+      maxHeight,
+      thickness,
+      leafSize,
+      leafDensity;
   final Color color;
 
   /// Patton ka rang — door wali layers mein shaakhon se halka (dhund mein fade)
@@ -401,6 +415,8 @@ class TreeLayer {
     this.minHeight = 380,
     this.maxHeight = 520,
     this.thickness = 1,
+    this.leafSize = 1,
+    this.leafDensity = 1,
     this.variants,
   });
 
@@ -427,6 +443,8 @@ class TreeLayer {
         maxDepth: maxDepth,
         leafiness: leafiness,
         thickness: thickness,
+        leafSize: leafSize,
+        leafDensity: leafDensity,
       );
     });
   }

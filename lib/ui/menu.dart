@@ -18,6 +18,9 @@ class Progress {
     }
   }
 
+  /// Pehla chapter hamesha khula; baaqi tab khulte hain jab pichhla paar ho jaye
+  bool unlocked(int chapter) => chapter == 1 || done.contains(chapter - 1);
+
   Future<void> markDone(int chapter) async {
     done.add(chapter);
     try {
@@ -63,10 +66,7 @@ class TitleScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // "Khelo" = pehla bana hua chapter jo abhi khatam nahi hua
-    final next = chapters.firstWhere(
-      (c) => c.ready && !progress.done.contains(c.number),
-      orElse: () => chapters.first,
-    );
+    final next = chapters.lastWhere((c) => progress.unlocked(c.number));
     return Scaffold(
       backgroundColor: Colors.black,
       body: _Advance(
@@ -108,6 +108,7 @@ class TitleScreen extends StatelessWidget {
                       _ChapterTile(
                         c,
                         done: progress.done.contains(c.number),
+                        locked: !progress.unlocked(c.number),
                         onTap: () => onPlay(c),
                       ),
                   ],
@@ -133,21 +134,45 @@ class TitleScreen extends StatelessWidget {
 class _ChapterTile extends StatelessWidget {
   final Chapter chapter;
   final bool done;
+  final bool locked;
   final VoidCallback onTap;
-  const _ChapterTile(this.chapter, {required this.done, required this.onTap});
+  const _ChapterTile(
+    this.chapter, {
+    required this.done,
+    required this.locked,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = chapter.ready ? _white : _dim;
+    final open = chapter.ready && !locked;
+    final color = open ? _white : _dim;
     return InkWell(
-      onTap: onTap,
+      // Band chapter: tap yahin ruk jaye (neeche "kahin bhi tap = khelo" tak na pahunche), aur wajah batao
+      onTap: open
+          ? onTap
+          : () => ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Finish Chapter ${chapter.number - 1} to unlock.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      letterSpacing: 1.5,
+                      color: Color(0xFFDADADA),
+                    ),
+                  ),
+                  backgroundColor: const Color(0xFF1C1D1E),
+                  duration: const Duration(seconds: 2),
+                ),
+              ),
+
       child: Container(
         width: 112,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: chapter.ready ? Colors.white24 : Colors.white10,
-          ),
+          border: Border.all(color: open ? Colors.white24 : Colors.white10),
         ),
         child: Column(
           children: [
@@ -165,10 +190,13 @@ class _ChapterTile extends StatelessWidget {
               style: TextStyle(fontSize: 13, letterSpacing: 1.5, color: color),
             ),
             const SizedBox(height: 4),
-            Text(
-              done ? '✓' : (chapter.ready ? ' ' : 'soon'),
-              style: const TextStyle(fontSize: 11, color: _dim),
-            ),
+            if (locked)
+              const Icon(Icons.lock_outline, size: 13, color: _dim)
+            else
+              Text(
+                done ? '✓' : (chapter.ready ? ' ' : 'soon'),
+                style: const TextStyle(fontSize: 11, color: _dim),
+              ),
           ],
         ),
       ),

@@ -1,11 +1,14 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shade/game/autopilot.dart';
 import 'package:shade/game/chapters.dart';
 import 'package:shade/game/levels.dart';
 import 'package:shade/game/weather.dart';
 import 'package:shade/game/world.dart';
 import 'package:shade/main.dart';
+import 'package:shade/ui/menu.dart';
+import 'package:shade/ui/trailer.dart';
 
 // Chhota test level: zameen, ek spike, ek deewar, ek gaddha
 Level testLevel() => const Level(
@@ -394,6 +397,35 @@ void main() {
         'The Cliffs',
         'Homecoming',
       ]);
+    });
+  });
+
+  group('trailer aur lock', () {
+    test('chapter tabhi khulta hai jab pichhla paar ho', () {
+      final p = Progress();
+      expect(p.unlocked(1), isTrue);
+      expect(p.unlocked(2), isFalse);
+      p.done.add(1);
+      expect(p.unlocked(2), isTrue);
+      expect(p.unlocked(3), isFalse);
+    });
+
+    test('trailer ke har shot mein hero khud aage barhta hai, gaddhay mein nahi girta', () {
+      for (final shot in trailerShots) {
+        final w = World(shot.level())
+          ..pos = shot.start
+          ..cinematic = true
+          ..allowChase = shot.allowChase;
+        for (var t = 0.0; t < shot.duration; t += 1 / 60) {
+          w.update(1 / 60, autopilot(w, stopAt: shot.stopAt));
+        }
+        expect(w.pos.dy, lessThanOrEqualTo(410), reason: 'shot ${shot.start}');
+        expect(
+          w.pos.dx,
+          greaterThan(shot.start.dx + 100),
+          reason: 'shot ${shot.start}',
+        );
+      }
     });
   });
 }

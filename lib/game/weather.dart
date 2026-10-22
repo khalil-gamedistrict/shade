@@ -224,12 +224,14 @@ class Weather {
     }
     if (rain < 0.6) return;
     _nextLightning -= dt;
-    if (_nextLightning <= 0) {
-      _flashTime = 0;
-      _nextLightning = 7 + _r.nextDouble() * 10;
-      final near = _r.nextDouble() < rain - 0.3;
-      onThunder?.call(near);
-    }
+    if (_nextLightning <= 0) strike(near: _r.nextDouble() < rain - 0.3);
+  }
+
+  /// Abhi bijli girao (trailer jaise manzar ke liye bhi)
+  void strike({bool near = true}) {
+    _flashTime = 0;
+    _nextLightning = 7 + _r.nextDouble() * 10;
+    onThunder?.call(near);
   }
 
   /// [layer] index ki boondein lines ki shakal mein (drawRawPoints ke liye)
