@@ -2,13 +2,14 @@
 
 Apocalypto film ke dhaanche se mutasir (inspired). Naam, kirdar aur scenes hamare apne hain.
 
-Ek jawan shikaari ke peeche **jangli shikaariyon ka gol** para hai jo use maarna chahte hain.
-Woh jungle mein jaan bacha kar bhaag raha hai — ghar ki taraf, jahan us ki biwi ek gehre gaddhay mein chhupi hai
-aur baarish gaddha bhar rahi hai.
+Jungle mein ek chhota sa qabeela hansi khushi reh raha hai. Ek din **jangli shikaariyon ka gol** un pe
+hamla kar deta hai — sab jaan bacha kar bhaagte hain. Hamara hero un shikaariyon se bachne ke liye
+jungle, aag, darya, toofan aur chattanon se hota hua bhaagta hai.
 
 Kahani bina alfaaz ke dikhayi jaati hai (Limbo ki tarah): silhouettes, awaazein, mausam.
 
 ## Kirdar (silhouette)
+- **Qabeela:** gaon ke mard, auratein (lambe baal, ghaghra), bachche — trailer mein alaao ke gird.
 - **Hero:** lambe khule baal (daurte waqt peeche udte), kaan mein gol baali, langot, nange paon.
 - **Shikaari (3):** pankhon ka taaj + neza · sar pe juda + gol dhaal + neza · kalgi + kaman + tarkash.
   Patli ghusse wali aankhen.
@@ -28,7 +29,7 @@ Kahani bina alfaaz ke dikhayi jaati hai (Limbo ki tarah): silhouettes, awaazein,
 | 3 | The River | Darya paar karna | Pattharon pe kood, tairte lakkar, paani mein gire to doob gaye |
 | 4 | The Storm | Toofan | Tez hawa, moosla dhaar baarish, bijli, hilte platform |
 | 5 | The Cliffs | Oonchi chattanen | Rassi ka pul, gehri khaiyan, saamne se tez hawa |
-| 6 | Homecoming | Ghar — gaddhay mein chhupi biwi tak | Bhari baarish, aakhir mein biwi; jeet pe "The End" |
+| 6 | Homecoming | Shikaariyon se bach kar apne logon tak | Bhari baarish, aakhri mushkil hissa; jeet pe "The End" |
 
 Sab chapter bane hue hain. Har chapter mein shikaari peeche hain.
 
@@ -41,9 +42,15 @@ Gaddhay mein girne pe haath paon chalaata neeche jata hai, paani mein aahista do
 | Game mein | Kahani mein |
 |---|---|
 | Shikanje, jhoolte lakkar, girte patthar | Shikaariyon ke lagaye jaal |
-| Barhti baarish | Gaddhay mein bharta paani — waqt kam |
 | Checkpoint lamp | Raaste ki nishaniyan, ghar ki taraf |
-| Aakhir ki roshni | Ghar / biwi |
+| Aakhir ki roshni | Hifazat — apne logon tak |
 
 ## Hadd
 Andhera aur dar haan, lekin dikhaya hua khoon nahi (sab umar ke liye).
+
+## Trailer (game khulte hi, skip ho sakta hai)
+1. *They lived in peace.* — alaao ke gird naachte log, khelte bachche, sabut jhonpriyan
+2. *Until the hunters came.* — jang ki cheekh, shikaari aate hain, sab bhaagte hain, hero bhi
+3. *Run.* — jalta gaon
+4. *Through fire. Through the storm.* — toofan aur bijli
+5. **SHADE**

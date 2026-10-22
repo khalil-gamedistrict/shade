@@ -1,10 +1,8 @@
-// Chapters ki khaas cheezen: aag, jalti jhonpriyan, darya, tairte lakkar, rassi ka pul, biwi ka gaddha.
+// Chapters ki khaas cheezen: aag, jalti jhonpriyan, darya, tairte lakkar, rassi ka pul.
 // Limbo jaisa: sab kaala silhouette; aag aur roshni safed chamak ki tarah.
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-
-import 'figures.dart';
 
 const _ink = Color(0xFF070707);
 final _fill = Paint()..color = _ink;
@@ -95,10 +93,11 @@ void drawHut(
   double ground,
   double t,
   double wind,
-  int seed,
-) {
+  int seed, {
+  bool burning = true, // false = sabut jhonpri (hamla hone se pehle)
+}) {
   // Dhuaan sab se peeche
-  for (var k = 5; k >= 0; k--) {
+  for (var k = burning ? 5 : -1; k >= 0; k--) {
     final rise = (t * 18 + k * 34) % 210;
     final p = Offset(
       x + wind * rise * 0.5 + sin(t * 0.8 + k) * 10,
@@ -119,7 +118,9 @@ void drawHut(
     Rect.fromLTWH(x - 9, ground - 30, 18, 30),
     Paint()
       ..color = Colors.white.withValues(
-        alpha: 0.35 + 0.15 * sin(t * 11 + seed),
+        alpha: burning
+            ? 0.35 + 0.15 * sin(t * 11 + seed)
+            : 0.22 + 0.04 * sin(t * 3 + seed),
       ),
   );
   // Phoos ki chhat — kinara be-tarteeb, ek taraf se jal kar toota hua
@@ -130,11 +131,17 @@ void drawHut(
       ground - 44 + (k.isEven ? 3 : 0) + _hash(seed * 11 + k, 5) * 3,
     );
   }
-  roof
-    ..lineTo(x + 8, ground - 96)
-    ..lineTo(x - 2, ground - 90)
-    ..close();
+  if (burning) {
+    // Ek taraf se jal kar toota hua
+    roof
+      ..lineTo(x + 8, ground - 96)
+      ..lineTo(x - 2, ground - 90);
+  } else {
+    roof.lineTo(x, ground - 98);
+  }
+  roof.close();
   canvas.drawPath(roof, Paint()..color = const Color(0xFF141414));
+  if (!burning) return;
   drawFire(
     canvas,
     Rect.fromLTWH(x - 30, ground - 75, 46, 8),
@@ -245,74 +252,5 @@ void drawBridge(Canvas canvas, Rect r, double t, double wind) {
   }
   for (final x in [r.left, r.right]) {
     canvas.drawRect(Rect.fromLTWH(x - 2, r.top - 32, 4, 34), _fill);
-  }
-}
-
-/// Aakhri manzil: zameen mein gaddha, andar barhta paani, aur biwi — oopar haath barhaye hue
-void drawWifePit(Canvas canvas, double x, double ground, double t) {
-  // Umeed ki roshni
-  canvas.drawCircle(
-    Offset(x, ground - 20),
-    120,
-    Paint()
-      ..shader =
-          RadialGradient(
-            colors: [
-              Colors.white.withValues(alpha: 0.35),
-              Colors.white.withValues(alpha: 0),
-            ],
-          ).createShader(
-            Rect.fromCircle(center: Offset(x, ground - 20), radius: 120),
-          ),
-  );
-  // Gaddhe ka andar: andhera, neeche paani ki chamakti sateh
-  final pit = Rect.fromLTWH(x - 28, ground, 56, 70);
-  canvas.drawRect(
-    pit,
-    Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFF16181A), Color(0xFF2C3033)],
-      ).createShader(pit),
-  );
-  final water = ground + 26 + sin(t * 1.7) * 1.5;
-  canvas.drawRect(
-    Rect.fromLTRB(pit.left, water, pit.right, pit.bottom),
-    Paint()..color = const Color(0xFF3C4144),
-  );
-  canvas.drawLine(
-    Offset(pit.left, water),
-    Offset(pit.right, water),
-    Paint()
-      ..color = const Color(0xAAD0D4D6)
-      ..strokeWidth = 1,
-  );
-  // Biwi: kamar tak paani mein, sar zameen se jhaankta hua, ek haath oopar bahar ki taraf
-  canvas.save();
-  canvas.clipRect(
-    Rect.fromLTRB(pit.left - 30, ground - 80, pit.right + 30, water + 1),
-  );
-  drawFigure(
-    canvas,
-    look: Look.hero,
-    foot: Offset(x - 4, water + 10),
-    dir: 1, // aate hue shohar ki taraf
-    phase: 0,
-    moving: false,
-    inAir: false,
-    time: t,
-    pose: FigurePose(
-      (0.1, 0),
-      (-0.1, 0),
-      (2.3 + sin(t * 2.2) * 0.12, 0.55),
-      (0.5, 0.6),
-    ),
-  );
-  canvas.restore();
-  // Kinare ke chhote patthar (sirf dono kinaron pe)
-  for (final k in [-1.0, 1.0]) {
-    canvas.drawCircle(Offset(x + k * 31, ground + 1), 3.2, _fill);
-    canvas.drawCircle(Offset(x + k * 36, ground + 2), 2.4, _fill);
   }
 }

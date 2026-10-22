@@ -120,8 +120,8 @@ class Jungle {
     seed: 11,
     color: const Color(0x28000000),
     leafColor: const Color(0x26000000),
-    leafSize: 1.9,
-    leafDensity: 1.6,
+    leafSize: 1.0,
+    leafDensity: 2.4,
     minHeight: 540,
     maxHeight: 720,
     thickness: 0.38,
@@ -135,8 +135,8 @@ class Jungle {
     seed: 22,
     color: const Color(0xFF5E6062),
     leafColor: const Color(0xFF656769),
-    leafSize: 1.6,
-    leafDensity: 1.5,
+    leafSize: 1.05,
+    leafDensity: 2.2,
     minHeight: 500,
     maxHeight: 680,
     thickness: 0.48,
@@ -502,7 +502,10 @@ class Jungle {
           Offset(x, s.top + 3),
           shear: -sway,
           mirror: _hash(i, 44) > 0.5,
-          scale: 0.35 + _hash(i, 45) * 0.35,
+          scale:
+              0.24 +
+              _hash(i, 45) *
+                  0.2, // hero ke hisaab se — patte us ke sar se bare na hon
         );
       }
     }
@@ -555,7 +558,7 @@ class Jungle {
         Offset(sx, 570),
         shear: -sway,
         mirror: i.isOdd,
-        scale: 1.5 + _hash(i, 54) * 0.7,
+        scale: 1.0 + _hash(i, 54) * 0.4,
         opacity: fade(sx, 140),
       );
     }

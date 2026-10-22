@@ -16,7 +16,16 @@ class WorldPainter extends CustomPainter {
   final World world;
   final Jungle jungle;
   final Weather weather;
-  WorldPainter(this.world, this.jungle, this.weather, {super.repaint});
+
+  /// Trailer jaisi jagahon ke liye apni cheezen (game ki duniya ke coordinates mein, player se pehle)
+  final void Function(Canvas canvas)? extra;
+  WorldPainter(
+    this.world,
+    this.jungle,
+    this.weather, {
+    this.extra,
+    super.repaint,
+  });
 
   static const viewHeight = 500.0; // itni world height screen pe fit hogi
   static final _black = Paint()..color = const Color(0xFF070707);
@@ -102,8 +111,6 @@ class WorldPainter extends CustomPainter {
       if (f.right < camX - 80 || f.left > camX + viewW + 80) continue;
       drawFire(canvas, f, t);
     }
-    final wife = level.wifeX;
-    if (wife != null) drawWifePit(canvas, wife, _groundAt(wife), t);
     for (final trap in world.level.traps) {
       _trap(canvas, trap);
     }
@@ -123,6 +130,7 @@ class WorldPainter extends CustomPainter {
       );
     }
     _goalLight(canvas);
+    extra?.call(canvas);
     _hunters(canvas, camX, viewW);
     _player(canvas);
     _spears(canvas);

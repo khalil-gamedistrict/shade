@@ -133,7 +133,6 @@ class Level {
   final List<double> huts; // peeche jalti jhonpriyan (sirf manzar)
   final Mood mood;
   final double? waterY; // darya: is oonchai pe paani, gire to doob gaye
-  final double? wifeX; // aakhri chapter: gaddhay mein biwi
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -157,7 +156,6 @@ class Level {
     this.huts = const [],
     this.mood = Mood.forest,
     this.waterY,
-    this.wifeX,
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });

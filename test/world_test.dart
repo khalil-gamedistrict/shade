@@ -414,10 +414,9 @@ void main() {
       for (final shot in trailerShots) {
         final w = World(shot.level())
           ..pos = shot.start
-          ..cinematic = true
-          ..allowChase = shot.allowChase;
+          ..cinematic = true;
         for (var t = 0.0; t < shot.duration; t += 1 / 60) {
-          w.update(1 / 60, autopilot(w, stopAt: shot.stopAt));
+          w.update(1 / 60, t >= shot.runAt ? autopilot(w) : Input());
         }
         expect(w.pos.dy, lessThanOrEqualTo(410), reason: 'shot ${shot.start}');
         expect(

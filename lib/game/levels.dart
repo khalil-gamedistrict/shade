@@ -137,7 +137,7 @@ Level cliffs() => const Level(
   rain: Profile([(0, 0.1), (3600, 0.3)]),
 );
 
-/// 6 · Homecoming — moosla dhaar baarish, ghar ke paas: gaddhay mein chhupi biwi tak pahuncho
+/// 6 · Homecoming — moosla dhaar baarish, aakhri daud: shikaariyon se bach kar apne logon tak
 Level homecoming() => const Level(
   mood: Mood.home,
   solids: [
@@ -167,7 +167,6 @@ Level homecoming() => const Level(
     Offset(2540, 400),
   ],
   goalX: 3150,
-  wifeX: 3215,
   chase: Chase(startX: 200),
   wind: Profile([(0, 0.4), (2000, 0.8), (3400, 0.5)]),
   rain: Profile([(0, 0.6), (1500, 0.9), (3400, 1.0)]),

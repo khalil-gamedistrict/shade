@@ -9,6 +9,8 @@ enum Look {
   feathers, // pankhon wala taaj, neza
   shield, // sar pe juda, gol dhaal, neza
   archer, // kalgi (mohawk), kaman, peeth pe tarkash
+  villager, // gaon ka aadmi (ya bachcha, chhote scale pe): chhote baal, langot
+  woman, // lambe baal, ghutnon tak ghaghra
 }
 
 const _ink = Color(0xFF070707);
@@ -132,7 +134,19 @@ void drawFigure(
 
   // Langot: aagay aur peeche latakte kapre — daurte waqt peeche ki taraf lehrate hain
   final flap = moving ? sin(phase * 2) * 1.5 - 2.5 : wind * 1.5;
-  for (final side in [1.0, -1.0]) {
+  if (look == Look.woman) {
+    // Ghaghra: kamar se ghutnon tak, daurte waqt peeche lehrata
+    canvas.drawPath(
+      Path()
+        ..moveTo(-4.4, -19)
+        ..lineTo(4.4, -19)
+        ..lineTo(dir * (6.5 + flap * 0.4), -8)
+        ..lineTo(dir * (-6.5 + flap * 0.8), -8.5)
+        ..close(),
+      _fill,
+    );
+  }
+  for (final side in look == Look.woman ? const <double>[] : [1.0, -1.0]) {
     final x0 = dir * side * 0.5;
     canvas.drawPath(
       Path()
@@ -177,6 +191,20 @@ void drawFigure(
           ..strokeWidth = 0.6
           ..color = const Color(0x66D8D8D8),
       );
+      if (!eyesClosed) _eyes(canvas, head, dir, time, angry: false);
+    case Look.villager:
+      // Chhote baal — sar pe topi jaisi
+      canvas.drawPath(
+        Path()..addArc(
+          Rect.fromCircle(center: head + const Offset(0, -0.8), radius: 6.9),
+          pi * 0.95,
+          pi * 1.15,
+        ),
+        _fill,
+      );
+      if (!eyesClosed) _eyes(canvas, head, dir, time, angry: false);
+    case Look.woman:
+      _longHair(canvas, head, dir, moving, time, wind);
       if (!eyesClosed) _eyes(canvas, head, dir, time, angry: false);
     case Look.feathers:
       // Pankhon ka taaj: sar ke peeche pankhe ki tarah phaile lambe pankh, bandh (band) ke saath

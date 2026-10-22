@@ -128,7 +128,7 @@ List<Path> broadleaf(int seed, double size) {
     ];
     out.add(_stem(pts, 2.4, 1.2));
     // Patta neeche ki taraf latka hua
-    final leafLen = size * (0.35 + r.nextDouble() * 0.2);
+    final leafLen = size * (0.24 + r.nextDouble() * 0.1);
     out.add(
       _leaf(
         end,
