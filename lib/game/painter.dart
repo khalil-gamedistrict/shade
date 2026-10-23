@@ -317,6 +317,7 @@ class WorldPainter extends CustomPainter {
     final spans = [
       for (final s in world.level.ground)
         if (s.height >= 10) (s.left, s.right),
+      for (final t in world.level.terrain) (t.left, t.right),
     ]..sort((a, b) => a.$1.compareTo(b.$1));
     final out = <(double, double)>[];
     var cursor = from;

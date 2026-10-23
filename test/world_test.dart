@@ -141,9 +141,11 @@ void main() {
   test('asal level ke saare checkpoints zameen pe hain', () {
     final level = Level.first();
     for (final c in level.checkpoints) {
-      final onGround = level.solids.any(
-        (s) => s.top == c.dy && c.dx > s.left && c.dx < s.right,
-      );
+      final onGround =
+          level.solids.any(
+            (s) => s.top == c.dy && c.dx > s.left && c.dx < s.right,
+          ) ||
+          level.terrainTop(c.dx) == c.dy;
       expect(onGround, isTrue, reason: 'checkpoint $c');
     }
     expect(level.goalX, greaterThan(7000));
@@ -265,8 +267,20 @@ void main() {
   });
 
   group('jungle ki zameen', () {
+    // Timing wale khatre (aari, lakkar, shaakh) hata kar; hilte platform apni jagah ruke hue
     Level noTiming(Level l) => Level(
-      solids: l.solids,
+      // Hilta platform: jahan tak jaata hai wahan tak (bot intezar nahi karta)
+      solids: [
+        ...l.solids,
+        for (final m in l.movers)
+          Rect.fromLTRB(
+            m.base.left - m.dx,
+            m.base.top - m.dy,
+            m.base.right + m.dx,
+            m.base.bottom,
+          ),
+      ],
+      waterY: l.waterY,
       spikes: l.spikes,
       traps: l.traps,
       saws: const [],
@@ -358,14 +372,44 @@ void main() {
       },
     );
 
-    test('Chapter 1 shuru se aakhir tak khela ja sakta hai (bina mare)', () {
-      final level = noTiming(chapters.first.level!());
-      final w = World(level);
-      for (var k = 0; k < 90 * 60 && w.state == PlayerState.alive; k++) {
-        w.update(1 / 60, autopilot(w));
+    // Har checkpoint se agle tak bot daurta hai. Hilte takhton wale bare gaddhay chhor kar (wahan sahi
+    // waqt ka intezar chahiye, bot nahi karta) — baaqi saara ooncha-neecha raasta bina mare paar hona chahiye.
+    test('har chapter ka har hissa khela ja sakta hai (bina mare)', () {
+      for (final c in chapters) {
+        final level = noTiming(c.level!());
+        final stops = [...level.checkpoints.map((p) => p.dx), level.goalX];
+        for (var i = 0; i + 1 < stops.length; i++) {
+          final from = stops[i], to = stops[i + 1];
+          if (c.level!().movers.any(
+            (m) => m.base.left > from && m.base.left < to,
+          )) {
+            continue;
+          }
+          final w = World(level)
+            ..checkpoint = i
+            ..pos = level.checkpoints[i];
+          for (var k = 0; k < 60 * 60 && w.pos.dx < to; k++) {
+            w.update(1 / 60, autopilot(w));
+            if (w.state != PlayerState.alive) break;
+          }
+          expect(
+            w.deaths,
+            0,
+            reason: '${c.title} ($from–$to) mara: ${w.deathKind} at ${w.pos}',
+          );
+          expect(
+            w.pos.dx,
+            greaterThanOrEqualTo(to - 1),
+            reason: '${c.title} ($from–$to) ruka: ${w.pos}',
+          );
+        }
       }
-      expect(w.deaths, 0, reason: 'mara: ${w.deathKind} at ${w.pos}');
-      expect(w.state, PlayerState.won);
+    });
+
+    test('har chapter mein ooncha-neecha zameen hai', () {
+      for (final c in chapters) {
+        expect(c.level!().terrain, isNotEmpty, reason: c.title);
+      }
     });
 
     test('Chapter 1 mein shikaari bhi poora raasta paar karte hain', () {

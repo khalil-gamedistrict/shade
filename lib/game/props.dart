@@ -431,8 +431,10 @@ void drawHideoutBack(Canvas canvas, Rect hole, double ground, double t) {
   for (var i = 0; i <= n; i++) {
     final a = i / n * 2 * pi;
     var y = sin(a);
-    y = y > 0 ? pow(y, 0.45).toDouble() : y; // neeche ka farsh chapta
-    final wob = 1 + (_hash(i % n, 71) - 0.5) * 0.16;
+    y = y > 0
+        ? pow(y, 0.7).toDouble()
+        : y; // farsh: mitti ke dheer, seedhi lakeer nahi (paani jaisa na lage)
+    final wob = 1 + (_hash(i % n, 71) - 0.5) * 0.26;
     final p = c + Offset(cos(a) * rx * wob, y * ry * wob);
     i == 0 ? pocket.moveTo(p.dx, p.dy) : pocket.lineTo(p.dx, p.dy);
   }
@@ -453,10 +455,46 @@ void drawHideoutBack(Canvas canvas, Rect hole, double ground, double t) {
       ..shader = const RadialGradient(
         center: Alignment(-0.55, -0.9), // roshni munh se aati hai
         radius: 1.25,
-        colors: [Color(0xFF5C5F61), Color(0xFF333537), Color(0xFF18191A)],
+        colors: [Color(0xFF47443F), Color(0xFF2A2826), Color(0xFF121110)],
         stops: [0, 0.45, 1],
       ).createShader(bounds),
   );
+  // Mitti ki deewarein: zarre aur kankar (sookhi khoh — chikni sath nahi)
+  canvas.save();
+  canvas.clipPath(shape);
+  final grain = Paint();
+  for (var k = 0; k < 140; k++) {
+    final p = Offset(
+      hole.left + _hash(k, 92) * hole.width,
+      ground + _hash(k, 93) * (hole.bottom - ground),
+    );
+    grain.color = _hash(k, 94) < 0.6
+        ? const Color(0x33000000)
+        : const Color(0x14FFFFFF);
+    canvas.drawCircle(p, 0.6 + _hash(k, 95) * 1.4, grain);
+  }
+  // Farsh pe mitti ka dheer (aagay ki taraf utha hua)
+  canvas.drawPath(
+    Path()
+      ..moveTo(hole.left, hole.bottom + 4)
+      ..quadraticBezierTo(
+        hole.left + hole.width * 0.3,
+        hole.bottom - 9,
+        hole.left + hole.width * 0.55,
+        hole.bottom - 2,
+      )
+      ..quadraticBezierTo(
+        hole.left + hole.width * 0.8,
+        hole.bottom + 3,
+        hole.right,
+        hole.bottom - 6,
+      )
+      ..lineTo(hole.right, hole.bottom + 10)
+      ..lineTo(hole.left, hole.bottom + 10)
+      ..close(),
+    Paint()..color = const Color(0xCC0B0B0A),
+  );
+  canvas.restore();
   // Farsh pe chhote kankar aur mitti ke dheer
   for (var k = 0; k < 9; k++) {
     final x = hole.left + 14 + _hash(k, 72) * (hole.width - 28);

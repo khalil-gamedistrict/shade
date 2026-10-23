@@ -80,170 +80,364 @@ Level hunt() {
   );
 }
 
-/// 2 · Ashes — jalta hua gaon: aag ke sholay, girte jalte shehteer, peeche jalti jhonpriyan
-Level ashes() => const Level(
-  mood: Mood.fire,
-  solids: [
-    Rect.fromLTWH(-600, 400, 1300, 200),
-    // gaddha 700–790
-    Rect.fromLTWH(790, 400, 710, 200),
-    Rect.fromLTWH(1150, 340, 110, 60), // toota chabootra
-    // gaddha 1500–1600
-    Rect.fromLTWH(1600, 400, 700, 200),
-    Rect.fromLTWH(1900, 320, 40, 80), // jali hui deewar
-    // gaddha 2300–2390
-    Rect.fromLTWH(2390, 400, 820, 200),
-  ],
-  spikes: [],
-  saws: [],
-  fires: [
-    Rect.fromLTWH(420, 384, 60, 16),
-    Rect.fromLTWH(1000, 384, 70, 16),
-    Rect.fromLTWH(1700, 384, 60, 16),
-    Rect.fromLTWH(2120, 384, 80, 16),
-    Rect.fromLTWH(2620, 384, 60, 16),
-  ],
-  traps: [Rect.fromLTWH(2010, 390, 34, 10)],
-  branches: [Branch(1380, 1270), Branch(2750, 2600)],
-  huts: [260, 640, 1080, 1420, 1820, 2230, 2560, 2900],
-  checkpoints: [
-    Offset(100, 400),
-    Offset(850, 400),
-    Offset(1650, 400),
-    Offset(2440, 400),
-  ],
-  goalX: 3000,
-  chase: Chase(startX: 250),
-  wind: Profile([(0, 0.3), (3100, 0.4)]),
-);
-
-/// 3 · The River — darya: pattharon pe kood, tairti kashtiyan, paani mein gire to doob gaye
-Level river() => const Level(
-  mood: Mood.river,
-  waterY: 432,
-  solids: [
-    Rect.fromLTWH(-600, 400, 1200, 200),
-    // paani 600–690
-    Rect.fromLTWH(690, 396, 100, 204), // patthar
-    // paani 790–880
-    Rect.fromLTWH(880, 400, 420, 200),
-    // bara darya 1300–1860: do tairti kashtiyan aur beech mein patthar
-    Rect.fromLTWH(1530, 400, 70, 200),
-    Rect.fromLTWH(1860, 400, 540, 200),
-    // paani 2400–2490
-    Rect.fromLTWH(2490, 400, 720, 200),
-  ],
-  movers: [
-    Mover(
-      Rect.fromLTWH(1350, 412, 90, 14),
-      dx: 40,
-      dy: 3,
-      speed: 0.8,
-      boat: true,
-    ),
-    Mover(
-      Rect.fromLTWH(1660, 412, 90, 14),
-      dx: 45,
-      dy: 3,
-      speed: 0.9,
-      phase: 1.5,
-      boat: true,
-    ),
-  ],
-  spikes: [Rect.fromLTWH(1050, 384, 48, 16), Rect.fromLTWH(2050, 384, 48, 16)],
-  saws: [],
-  pendulums: [Pendulum(Offset(2250, 170), 175, speed: 1.5)],
-  branches: [Branch(2700, 2580)],
-  traps: [Rect.fromLTWH(2850, 390, 34, 10)],
-  checkpoints: [
-    Offset(100, 400),
-    Offset(920, 400),
-    Offset(1900, 400),
-    Offset(2530, 400),
-  ],
-  goalX: 3000,
-  chase: Chase(startX: 200),
-  wind: Profile([(0, 0.25), (3100, 0.3)]),
-  rain: Profile([(0, 0.2), (3100, 0.35)]),
-);
-
-/// 5 · The Cliffs — oonchi chattanen, rassi ka pul, gehri khaiyan, saamne se tez hawa
-Level cliffs() => const Level(
-  mood: Mood.cliffs,
-  solids: [
-    Rect.fromLTWH(-600, 400, 1100, 200),
-    Rect.fromLTWH(500, 340, 200, 260), // chattan ki seedhiyan
-    Rect.fromLTWH(700, 280, 200, 320),
-    // khai 900–990
-    Rect.fromLTWH(990, 280, 260, 320),
-    Rect.fromLTWH(1250, 280, 250, 6), // rassi ka pul
-    Rect.fromLTWH(1500, 280, 300, 320),
-    Rect.fromLTWH(1800, 360, 300, 240), // neeche utarna
-    // khai 2100–2190
-    Rect.fromLTWH(2190, 360, 310, 240),
-    // bari khai 2500–3000: hilte takhte aur ek patli chattan
-    Rect.fromLTWH(2700, 330, 80, 18),
-    Rect.fromLTWH(3000, 360, 720, 240),
-  ],
-  movers: [
-    Mover(Rect.fromLTWH(2560, 345, 80, 16), dy: 40, speed: 1.1),
-    Mover(Rect.fromLTWH(2840, 345, 80, 16), dx: 45, speed: 1.0, phase: 1),
-  ],
-  spikes: [Rect.fromLTWH(3150, 344, 48, 16)],
-  traps: [Rect.fromLTWH(3300, 350, 34, 10)],
-  saws: [Saw(2350, 290, speed: 1.6)],
-  pendulums: [Pendulum(Offset(1380, 100), 165, speed: 1.5)],
-  branches: [Branch(1650, 1530)],
-  checkpoints: [
-    Offset(100, 400),
-    Offset(1030, 280),
-    Offset(1840, 360),
-    Offset(3040, 360),
-  ],
-  goalX: 3500,
-  chase: Chase(startX: 200),
-  wind: Profile([
-    (0, 0.3),
-    (1000, -0.5),
-    (1800, -0.7),
-    (2200, 0.2),
-    (2600, 0.9),
-    (3600, 0.3),
-  ]),
-  rain: Profile([(0, 0.1), (3600, 0.3)]),
-);
-
-/// 6 · Homecoming — moosla dhaar baarish, aakhri daud: shikaariyon se bach kar apne logon tak
-Level homecoming() => const Level(
-  mood: Mood.home,
-  solids: [
-    Rect.fromLTWH(-600, 400, 1250, 200),
-    // gaddha 650–750
-    Rect.fromLTWH(750, 400, 600, 200),
-    // gaddha 1350–1440
-    Rect.fromLTWH(1440, 400, 560, 200),
-    Rect.fromLTWH(1700, 330, 40, 70), // deewar
-    // bara gaddha 2000–2500
-    Rect.fromLTWH(2230, 360, 80, 18),
-    Rect.fromLTWH(2500, 400, 900, 200),
-  ],
-  movers: [
-    Mover(Rect.fromLTWH(2075, 370, 90, 18), dx: 50, speed: 0.9),
-    Mover(Rect.fromLTWH(2370, 365, 80, 18), dy: 40, speed: 1.2, phase: 1),
-  ],
-  spikes: [Rect.fromLTWH(950, 384, 48, 16)],
-  traps: [Rect.fromLTWH(2900, 390, 34, 10)],
-  saws: [Saw(2700, 320, speed: 1.8)],
-  pendulums: [Pendulum(Offset(1150, 170), 175, speed: 1.6)],
-  branches: [Branch(1850, 1760)],
-  checkpoints: [
-    Offset(100, 400),
+/// 2 · Ashes — jalta hua gaon: aag ke sholay, girte jalte shehteer, peeche jalti jhonpriyan. Zameen ubar-khaabar,
+/// barsaati paani ka gadha.
+Level ashes() {
+  const a = Terrain([
+    Offset(-600, 400),
+    Offset(120, 400),
+    Offset(220, 400),
+    Offset(300, 392),
+    Offset(380, 400),
+    Offset(500, 400), // aag
+    Offset(560, 386),
+    Offset(620, 378),
+    Offset(702, 390),
+  ]);
+  const b = Terrain([
     Offset(790, 400),
-    Offset(1480, 400),
-    Offset(2540, 400),
-  ],
-  goalX: 3150,
-  chase: Chase(startX: 200),
-  wind: Profile([(0, 0.4), (2000, 0.8), (3400, 0.5)]),
-  rain: Profile([(0, 0.6), (1500, 0.9), (3400, 1.0)]),
-);
+    Offset(850, 401),
+    Offset(920, 396),
+    Offset(980, 400),
+    Offset(1090, 400), // aag
+    Offset(1130, 402),
+    Offset(1290, 402), // toota chabootra
+    Offset(1340, 396),
+    Offset(1420, 400),
+    Offset(1502, 394),
+  ]);
+  const c = Terrain([
+    Offset(1600, 400),
+    Offset(1660, 400),
+    Offset(1780, 400), // aag
+    Offset(1805, 410),
+    Offset(1832, 418), // barsaati paani
+    Offset(1858, 410),
+    Offset(1882, 400),
+    Offset(2050, 400), // jali deewar, shikanja
+    Offset(2090, 397),
+    Offset(2120, 400),
+    Offset(2210, 400), // aag
+    Offset(2250, 392),
+    Offset(2302, 386),
+  ]);
+  const d = Terrain([
+    Offset(2390, 400),
+    Offset(2450, 398),
+    Offset(2520, 404),
+    Offset(2600, 400),
+    Offset(2700, 400), // aag
+    Offset(2760, 392),
+    Offset(2830, 386),
+    Offset(2900, 398),
+    Offset(2944, 400),
+  ]);
+  double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
+  Rect fire(double x, double w) => Rect.fromLTWH(x, y(x + w / 2) - 16, w, 16);
+  return Level(
+    mood: Mood.fire,
+    terrain: const [a, b, c, d],
+    pools: const [Pool(1800, 1864, 405)],
+    solids: [
+      const Rect.fromLTWH(1150, 340, 110, 62), // toota chabootra
+      Rect.fromLTWH(1900, 320, 40, y(1920) - 320 + 2), // jali hui deewar
+      const Rect.fromLTWH(
+        2940,
+        400,
+        270,
+        200,
+      ), // aakhri zameen (chhupne ka gaddha)
+    ],
+    spikes: const [],
+    saws: const [],
+    fires: [
+      fire(420, 60),
+      fire(1000, 70),
+      fire(1700, 60),
+      fire(2120, 80),
+      fire(2620, 60),
+    ],
+    traps: [Rect.fromLTWH(2010, y(2027) - 10, 34, 10)],
+    branches: const [Branch(1380, 1270), Branch(2750, 2600)],
+    huts: const [260, 640, 1080, 1420, 1820, 2230, 2560, 2900],
+    checkpoints: [
+      const Offset(100, 400),
+      Offset(850, y(850)),
+      Offset(1650, y(1650)),
+      Offset(2440, y(2440)),
+    ],
+    goalX: 3000,
+    chase: const Chase(startX: 250),
+    wind: const Profile([(0, 0.3), (3100, 0.4)]),
+  );
+}
+
+/// 3 · The River — darya: pattharon pe kood, tairti kashtiyan, paani mein gire to doob gaye. Kinaare
+/// ooncha-neecha, ek dal-dal (ghutnon tak paani).
+Level river() {
+  const a = Terrain([
+    Offset(-600, 400),
+    Offset(150, 400),
+    Offset(250, 400),
+    Offset(330, 392),
+    Offset(420, 380),
+    Offset(500, 388),
+    Offset(560, 398),
+    Offset(602, 402),
+  ]);
+  const b = Terrain([
+    Offset(880, 400),
+    Offset(950, 398),
+    Offset(1010, 400),
+    Offset(1110, 400), // kaante
+    Offset(1170, 390),
+    Offset(1240, 396),
+    Offset(1302, 402),
+  ]);
+  const c = Terrain([
+    Offset(1860, 400),
+    Offset(1930, 394),
+    Offset(1990, 400),
+    Offset(2110, 400), // kaante
+    Offset(2180, 402),
+    Offset(2320, 400), // jhoolta lakkar
+    Offset(2360, 396),
+    Offset(2402, 400),
+  ]);
+  const d = Terrain([
+    Offset(2490, 400),
+    Offset(2550, 402),
+    Offset(2595, 412),
+    Offset(2635, 418), // dal-dal
+    Offset(2675, 412),
+    Offset(2715, 400),
+    Offset(2800, 398),
+    Offset(2900, 400), // shikanja
+    Offset(2944, 400),
+  ]);
+  double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
+  return Level(
+    mood: Mood.river,
+    waterY: 432,
+    terrain: const [a, b, c, d],
+    pools: const [Pool(2585, 2700, 405)],
+    solids: const [
+      Rect.fromLTWH(690, 396, 100, 204), // patthar
+      Rect.fromLTWH(1530, 400, 70, 200), // darya ke beech patthar
+      Rect.fromLTWH(2940, 400, 270, 200), // aakhri zameen (chhupne ka gaddha)
+    ],
+    movers: const [
+      Mover(
+        Rect.fromLTWH(1350, 412, 90, 14),
+        dx: 40,
+        dy: 3,
+        speed: 0.8,
+        boat: true,
+      ),
+      Mover(
+        Rect.fromLTWH(1660, 412, 90, 14),
+        dx: 45,
+        dy: 3,
+        speed: 0.9,
+        phase: 1.5,
+        boat: true,
+      ),
+    ],
+    spikes: [
+      Rect.fromLTWH(1050, y(1074) - 14, 48, 16),
+      Rect.fromLTWH(2050, y(2074) - 14, 48, 16),
+    ],
+    saws: const [],
+    pendulums: const [Pendulum(Offset(2250, 170), 175, speed: 1.5)],
+    branches: const [Branch(2780, 2660)],
+    traps: [Rect.fromLTWH(2850, y(2867) - 10, 34, 10)],
+    checkpoints: [
+      const Offset(100, 400),
+      Offset(920, y(920)),
+      Offset(1900, y(1900)),
+      Offset(2530, y(2530)),
+    ],
+    goalX: 3000,
+    chase: const Chase(startX: 200),
+    wind: const Profile([(0, 0.25), (3100, 0.3)]),
+    rain: const Profile([(0, 0.2), (3100, 0.35)]),
+  );
+}
+
+/// 5 · The Cliffs — pathreeli chattanen (charhai pe koodna), rassi ka pul, gehri khaiyan, saamne se tez hawa
+Level cliffs() {
+  const a = Terrain([
+    Offset(-600, 400),
+    Offset(150, 400),
+    Offset(250, 400),
+    Offset(330, 394),
+    Offset(410, 384),
+    Offset(470, 368),
+    Offset(498, 360),
+    Offset(508, 342), // pehli chattan — koodo
+    Offset(560, 338),
+    Offset(640, 334),
+    Offset(690, 332),
+    Offset(702, 300), // doosri chattan — koodo
+    Offset(760, 284),
+    Offset(840, 280),
+    Offset(902, 284),
+  ]);
+  const b = Terrain([
+    Offset(990, 282),
+    Offset(1050, 276),
+    Offset(1120, 272),
+    Offset(1190, 276),
+    Offset(1230, 280),
+    Offset(1252, 280), // rassi ka pul
+  ]);
+  const c = Terrain([
+    Offset(1498, 280),
+    Offset(1560, 276),
+    Offset(1640, 272),
+    Offset(1720, 278),
+    Offset(1790, 286),
+    Offset(1840, 326), // neeche utarna
+    Offset(1880, 350),
+    Offset(1950, 360),
+    Offset(2040, 356),
+    Offset(2102, 362),
+  ]);
+  const d = Terrain([
+    Offset(2190, 362),
+    Offset(2260, 356),
+    Offset(2350, 360),
+    Offset(2430, 354),
+    Offset(2502, 360),
+  ]);
+  const e = Terrain([
+    Offset(3000, 360),
+    Offset(3060, 356),
+    Offset(3120, 360),
+    Offset(3200, 360), // kaante
+    Offset(3260, 360),
+    Offset(3350, 360), // shikanja
+    Offset(3400, 352),
+    Offset(3444, 360),
+  ]);
+  double y(double x) => [a, b, c, d, e].map((t) => t.topAt(x)).nonNulls.first;
+  return Level(
+    mood: Mood.cliffs,
+    terrain: const [a, b, c, d, e],
+    solids: const [
+      Rect.fromLTWH(1250, 280, 250, 6), // rassi ka pul
+      Rect.fromLTWH(2700, 330, 80, 18),
+      Rect.fromLTWH(3440, 360, 280, 240), // aakhri zameen (chhupne ka gaddha)
+    ],
+    movers: const [
+      Mover(Rect.fromLTWH(2560, 345, 80, 16), dy: 40, speed: 1.1),
+      Mover(Rect.fromLTWH(2840, 345, 80, 16), dx: 45, speed: 1.0, phase: 1),
+    ],
+    spikes: [Rect.fromLTWH(3150, y(3174) - 14, 48, 16)],
+    traps: [Rect.fromLTWH(3300, y(3317) - 10, 34, 10)],
+    saws: const [Saw(2350, 290, speed: 1.6)],
+    pendulums: const [Pendulum(Offset(1380, 100), 165, speed: 1.5)],
+    branches: const [Branch(1650, 1530)],
+    checkpoints: [
+      const Offset(100, 400),
+      Offset(1030, y(1030)),
+      Offset(1960, y(1960)),
+      Offset(3040, y(3040)),
+    ],
+    goalX: 3500,
+    chase: const Chase(startX: 200),
+    wind: const Profile([
+      (0, 0.3),
+      (1000, -0.5),
+      (1800, -0.7),
+      (2200, 0.2),
+      (2600, 0.9),
+      (3600, 0.3),
+    ]),
+    rain: const Profile([(0, 0.1), (3600, 0.3)]),
+  );
+}
+
+/// 6 · Homecoming — moosla dhaar baarish, aakhri daud: shikaariyon se bach kar apne logon tak. Teelay, keechar.
+Level homecoming() {
+  const a = Terrain([
+    Offset(-600, 400),
+    Offset(150, 400),
+    Offset(250, 400),
+    Offset(340, 388),
+    Offset(430, 372),
+    Offset(520, 380),
+    Offset(600, 394),
+    Offset(652, 400),
+  ]);
+  const b = Terrain([
+    Offset(750, 400),
+    Offset(790, 402),
+    Offset(830, 412),
+    Offset(865, 418), // keechar
+    Offset(900, 410),
+    Offset(930, 400),
+    Offset(1010, 400), // kaante
+    Offset(1100, 400),
+    Offset(1200, 400), // jhoolta lakkar
+    Offset(1260, 392),
+    Offset(1352, 398),
+  ]);
+  const c = Terrain([
+    Offset(1440, 400),
+    Offset(1500, 396),
+    Offset(1580, 384),
+    Offset(1640, 392),
+    Offset(1690, 400),
+    Offset(1900, 400), // deewar, shaakh
+    Offset(1960, 394),
+    Offset(2002, 400),
+  ]);
+  const d = Terrain([
+    Offset(2500, 400),
+    Offset(2560, 398),
+    Offset(2640, 402),
+    Offset(2760, 400), // aari
+    Offset(2810, 394),
+    Offset(2850, 400),
+    Offset(2950, 400), // shikanja
+    Offset(2995, 404),
+    Offset(3050, 400),
+    Offset(3094, 400),
+  ]);
+  double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
+  return Level(
+    mood: Mood.home,
+    terrain: const [a, b, c, d],
+    pools: const [Pool(815, 912, 405)],
+    solids: [
+      Rect.fromLTWH(1700, 330, 40, y(1720) - 330 + 2), // deewar
+      const Rect.fromLTWH(2230, 360, 80, 18),
+      const Rect.fromLTWH(
+        3090,
+        400,
+        310,
+        200,
+      ), // aakhri zameen (chhupne ka gaddha)
+    ],
+    movers: const [
+      Mover(Rect.fromLTWH(2075, 370, 90, 18), dx: 50, speed: 0.9),
+      Mover(Rect.fromLTWH(2370, 365, 80, 18), dy: 40, speed: 1.2, phase: 1),
+    ],
+    spikes: [Rect.fromLTWH(950, y(974) - 14, 48, 16)],
+    traps: [Rect.fromLTWH(2900, y(2917) - 10, 34, 10)],
+    saws: const [Saw(2700, 320, speed: 1.8)],
+    pendulums: const [Pendulum(Offset(1150, 170), 175, speed: 1.6)],
+    branches: const [Branch(1850, 1760)],
+    checkpoints: [
+      const Offset(100, 400),
+      Offset(790, y(790)),
+      Offset(1480, y(1480)),
+      Offset(2540, y(2540)),
+    ],
+    goalX: 3150,
+    chase: const Chase(startX: 200),
+    wind: const Profile([(0, 0.4), (2000, 0.8), (3400, 0.5)]),
+    rain: const Profile([(0, 0.6), (1500, 0.9), (3400, 1.0)]),
+  );
+}

@@ -404,27 +404,89 @@ class Level {
       Rect.fromLTWH(2160, 400, 260, 200),
       // --- 3: moosla dhaar baarish, bara gaddha 2420–2960 hilte platformon ke saath
       Rect.fromLTWH(2640, 345, 80, 18),
-      Rect.fromLTWH(2960, 400, 520, 200),
+      // 2960–3480: ooncha-neecha (terrain)
       // --- 4: saamne se tez hawa
-      // gaddha 3480–3560
-      Rect.fromLTWH(3560, 400, 690, 200),
-      Rect.fromLTWH(4120, 330, 40, 70), // deewar
-      // gaddha 4250–4330
-      Rect.fromLTWH(4330, 400, 390, 200),
-      Rect.fromLTWH(4720, 345, 160, 255), // seedhiyan
-      Rect.fromLTWH(4880, 290, 140, 310),
-      Rect.fromLTWH(5020, 400, 180, 200),
+      // gaddha 3480–3560, phir 3560–4250 ooncha-neecha
+      Rect.fromLTWH(4120, 330, 40, 72), // deewar
+      // gaddha 4252–4318, phir 4318–5200 pathreeli charhai (terrain)
       // --- 5: toofan — peeche se aandhi, bara gaddha 5200–5880
       Rect.fromLTWH(5290, 370, 80, 18),
       Rect.fromLTWH(5640, 365, 80, 18),
-      Rect.fromLTWH(5880, 400, 1420, 200),
+      // 5880–6960 ooncha-neecha (terrain), phir aakhri seedhi zameen
+      Rect.fromLTWH(6960, 400, 340, 200),
     ],
+    terrain: [
+      Terrain([
+        Offset(2960, 400),
+        Offset(3000, 400), // checkpoint
+        Offset(3040, 396),
+        Offset(3080, 400),
+        Offset(3170, 400), // shikanja
+        Offset(3220, 404),
+        Offset(3300, 404), // jhoolta lakkar
+        Offset(3340, 400),
+        Offset(3440, 400), // kaante
+        Offset(3482, 396),
+      ]),
+      Terrain([
+        Offset(3560, 400),
+        Offset(3600, 400), // checkpoint
+        Offset(3640, 392),
+        Offset(3700, 380),
+        Offset(3760, 384),
+        Offset(3880, 400), // shaakh
+        Offset(3940, 402),
+        Offset(4060, 400), // aari, deewar
+        Offset(4180, 400),
+        Offset(4215, 394),
+        Offset(4252, 398),
+      ]),
+      Terrain([
+        Offset(4318, 400), // saamne ki hawa mein gaddha thora chhota
+        Offset(4520, 400), // kaante
+        Offset(4560, 403),
+        Offset(4660, 400), // shikanja
+        Offset(4700, 396),
+        Offset(4712, 350), // chattan — koodo
+        Offset(4790, 344),
+        Offset(4870, 340),
+        Offset(4882, 292), // oonchi chattan — koodo
+        Offset(4950, 290),
+        Offset(5020, 292),
+        Offset(5045, 330), // utarna
+        Offset(5075, 380),
+        Offset(5100, 400),
+        Offset(5165, 400), // kaante
+        Offset(5242, 398), // kaanton ke baad utarne ki jagah, phir khai
+      ]),
+      Terrain([
+        Offset(5880, 400),
+        Offset(5930, 400), // checkpoint
+        Offset(5980, 399),
+        Offset(6050, 403),
+        Offset(6170, 402), // jhoolta lakkar
+        Offset(6190, 410),
+        Offset(6215, 452), // gehra gadha — paani
+        Offset(6240, 452),
+        Offset(6265, 410),
+        Offset(6285, 402),
+        Offset(6350, 400), // aari
+        Offset(6420, 400),
+        Offset(6540, 400), // kaante
+        Offset(6620, 394),
+        Offset(6760, 400), // shaakh
+        Offset(6820, 400),
+        Offset(6900, 400), // shikanja
+        Offset(6962, 400),
+      ]),
+    ],
+    pools: [Pool(6196, 6259, 406, deep: true)],
     spikes: [
       Rect.fromLTWH(760, 384, 48, 16),
       Rect.fromLTWH(1850, 384, 64, 16),
       Rect.fromLTWH(3380, 384, 48, 16),
       Rect.fromLTWH(4450, 384, 48, 16),
-      Rect.fromLTWH(5120, 384, 40, 16),
+      Rect.fromLTWH(5112, 384, 40, 16),
       Rect.fromLTWH(6450, 384, 64, 16),
     ],
     traps: [
@@ -655,7 +717,11 @@ class World {
       _findBigGaps(); // jin gaddhon pe shikaari ruk jate hain
 
   List<(double, double)> _findBigGaps() {
-    final sorted = [...level.solids]..sort((a, b) => a.left.compareTo(b.left));
+    // Seedhi aur ooncha-neecha dono zameen (sirf left/right kaam ka hai)
+    final sorted = [
+      ...level.solids,
+      for (final t in level.terrain) Rect.fromLTRB(t.left, 0, t.right, 1),
+    ]..sort((a, b) => a.left.compareTo(b.left));
     final out = <(double, double)>[];
     var right = sorted.first.right;
     for (final s in sorted.skip(1)) {
@@ -824,6 +890,11 @@ class World {
     for (final s in solids) {
       final r = playerRect;
       if (!r.overlaps(s)) continue;
+      // Zara si oonchi kinari (dhalan se pul/chattan pe) — qadam rakh kar chadh jao, deewar nahi
+      if (grounded && s.top >= pos.dy - 4) {
+        pos = Offset(pos.dx, s.top);
+        continue;
+      }
       pos = Offset(
         moveX > 0 ? s.left - playerW / 2 : s.right + playerW / 2,
         pos.dy,
@@ -1309,6 +1380,10 @@ class World {
           playerH,
         );
         if (!r.overlaps(s)) continue;
+        if (b.grounded && s.top >= b.y - 4) {
+          b.y = s.top; // zara si kinari — chadh jao
+          continue;
+        }
         b.x = b.vx > 0 ? s.left - playerW / 2 : s.right + playerW / 2;
       }
       final wasGrounded = b.grounded;

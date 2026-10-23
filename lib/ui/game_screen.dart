@@ -261,12 +261,13 @@ class _GameScreenState extends State<GameScreen>
               ],
             ),
           ),
+          // Jump: thora oopar aur andar (left) — angootha qudrati taur pe wahan parta hai
           Positioned(
-            right: 24,
-            bottom: 24,
+            right: 64,
+            bottom: 56,
             child: _HoldButton(
               icon: Icons.keyboard_double_arrow_up,
-              size: 84,
+              size: 104,
               onChanged: (v) => input.jump = v,
             ),
           ),
@@ -347,7 +348,7 @@ class _HoldButton extends StatefulWidget {
   const _HoldButton({
     required this.icon,
     required this.onChanged,
-    this.size = 72,
+    this.size = 88,
   });
 
   @override
@@ -376,7 +377,11 @@ class _HoldButtonState extends State<_HoldButton> {
           color: Colors.white.withValues(alpha: pressed ? 0.3 : 0.12),
           border: Border.all(color: Colors.white24),
         ),
-        child: Icon(widget.icon, color: Colors.white70),
+        child: Icon(
+          widget.icon,
+          color: Colors.white70,
+          size: widget.size * 0.38,
+        ),
       ),
     );
   }
