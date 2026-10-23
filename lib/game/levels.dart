@@ -1,8 +1,19 @@
 // Chapters ke levels (4 asal level se kaata gaya hai — world.dart ka Level.first).
 // Jump ~117 oonchi, ~136 lambi: gaddhay ≤ 100, seedhiyan ≤ 60, saamne ki hawa mein gaddhay chhote.
+import 'dart:math';
 import 'dart:ui' show Offset, Rect;
 
 import 'world.dart';
+
+/// Gira hua bara darakht [x]..[x]+[w] pe: tana zameen se 32px oopar (jhuk kar neeche se), oopar itna ooncha
+/// jhund ke kood ke paar na ho. [ground] us jagah ki zameen (sab se oonchi jagah se naapa).
+Rect fallenTree(double x, double w, double Function(double) ground) {
+  var g = double.infinity;
+  for (var k = 0.0; k <= w; k += 5) {
+    g = min(g, ground(x + k));
+  }
+  return Rect.fromLTRB(x, g - 175, x + w, g - 32);
+}
 
 /// 1 · The Hunt — asli jungle ki zameen: ubar-khaabar farsh, teela, keechar wala naala (paani mein chaal
 /// dheemi), chattan jis pe koodna parta hai aur oopar jhoolta lakkar, khai, kaanton wala gadha, gehra talaab
@@ -56,6 +67,7 @@ Level hunt() {
   ]);
   double y(double x) => b.topAt(x) ?? a.topAt(x)!;
   return Level(
+    logs: [fallenTree(185, 85, y)],
     terrain: const [a, b],
     pools: const [Pool(808, 985, 402), Pool(2004, 2114, 406, deep: true)],
     // Pehle checkpoint (1400) ke baad raaste mein pari dhaal
@@ -142,6 +154,7 @@ Level ashes() {
   double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
   Rect fire(double x, double w) => Rect.fromLTWH(x, y(x + w / 2) - 16, w, 16);
   return Level(
+    logs: [fallenTree(2400, 80, y)],
     mood: Mood.fire,
     terrain: const [a, b, c, d],
     pools: const [Pool(1800, 1864, 405)],
@@ -234,6 +247,7 @@ Level river() {
   ]);
   double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
   return Level(
+    logs: [fallenTree(1110, 70, y)],
     mood: Mood.river,
     waterY: 432,
     terrain: const [a, b, c, d],
@@ -348,6 +362,7 @@ Level cliffs() {
   ]);
   double y(double x) => [a, b, c, d, e].map((t) => t.topAt(x)).nonNulls.first;
   return Level(
+    logs: [fallenTree(1545, 70, y)],
     mood: Mood.cliffs,
     terrain: const [a, b, c, d, e],
     solids: const [
@@ -453,6 +468,7 @@ Level homecoming() {
   ]);
   double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
   return Level(
+    logs: [fallenTree(520, 75, y)],
     mood: Mood.home,
     terrain: const [a, b, c, d],
     pools: const [Pool(815, 912, 405)],
@@ -573,6 +589,7 @@ Level home() {
   ]);
   double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
   return Level(
+    logs: [fallenTree(1700, 70, y)],
     mood: Mood.dawn,
     home: true,
     terrain: const [a, b, c, d],

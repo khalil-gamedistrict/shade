@@ -18,6 +18,20 @@ enum Look {
 Color get _ink =>
     palette.ink; // kirdar ka saaya (rangeen chapter mein gehra bhoora)
 
+/// Jhuka hua (ghutnon ke bal, aagay jhuk kar): figure ko [crouchDrop] neeche rakh kar is pose se banao.
+/// [phase] se chalte waqt taangen aage peeche (dabe paon / rengna).
+const crouchDrop = 11.0;
+FigurePose crouchPose(double phase, {required bool moving}) {
+  final s = moving ? sin(phase) : 0.0;
+  return FigurePose(
+    (1.4 + s * 0.25, -2.0 - s * 0.15),
+    (0.3 - s * 0.25, -1.8 + s * 0.15),
+    (1.25 + s * 0.3, 0.55),
+    (0.85 - s * 0.3, 0.85),
+    lean: 0.75,
+  );
+}
+
 /// Bahar se tay kiya hua pose (maut ka manzar waghera): (ran/baazu ka angle, ghutne/kohni ka mor)
 class FigurePose {
   final (double, double) legA, legB, armA, armB;

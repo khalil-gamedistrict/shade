@@ -15,6 +15,7 @@ class Sound {
       0.35,
     ),
     GameEvent.wade: (['wade1', 'wade2', 'wade3', 'wade4'], 0.45),
+    GameEvent.crouch: (['rustle'], 0.2),
     GameEvent.jump: (['jump'], 0.5),
     GameEvent.shieldPickup: (['rustle'], 0.5),
     GameEvent.shieldBlock: (

@@ -535,6 +535,120 @@ void main() {
     expect(w.hiding, isFalse);
   });
 
+  group('jhukna', () {
+    Level withLog({Chase? chase}) => Level(
+      solids: const [Rect.fromLTWH(-1000, 400, 4000, 200)],
+      spikes: const [],
+      saws: const [],
+      checkpoints: const [Offset(100, 400)],
+      goalX: 2900,
+      logs: [fallenTree(300, 80, (_) => 400)],
+      chase: chase,
+    );
+
+    test(
+      'gira darakht: khare khare nahi, kood ke nahi — jhuk kar neeche se',
+      () {
+        final stand = World(withLog());
+        stand.update(4, Input()..right = true);
+        expect(stand.pos.dx, lessThan(300)); // ruk gaya
+        final jump = World(withLog());
+        for (var k = 0; k < 240; k++) {
+          jump.update(
+            1 / 60,
+            Input()
+              ..right = true
+              ..jump = true,
+          );
+        }
+        expect(jump.pos.dx, lessThan(300)); // kood ke paar nahi
+        final duck = World(withLog());
+        duck.update(
+          5,
+          Input()
+            ..right = true
+            ..down = true,
+        );
+        expect(duck.pos.dx, greaterThan(400)); // neeche se nikal gaya
+        expect(duck.crouching, isTrue);
+        expect(
+          duck.pos.dx,
+          lessThan(100 + 5 * World.speed * 0.6),
+        ); // jhuk kar dheema
+      },
+    );
+
+    test('darakht ke neeche khare nahi ho sakte (sar takrata hai)', () {
+      final w = World(withLog())..pos = const Offset(250, 400);
+      for (var k = 0; k < 120 && w.pos.dx < 340; k++) {
+        w.update(
+          1 / 60,
+          Input()
+            ..right = true
+            ..down = true,
+        );
+      }
+      expect(w.pos.dx, greaterThan(330));
+      w.update(0.5, Input()); // down chhoda — sar ke oopar tana
+      expect(w.crouching, isTrue);
+      w.update(2, Input()..right = true);
+      expect(w.pos.dx, greaterThan(380));
+      w.update(0.2, Input());
+      expect(w.crouching, isFalse); // bahar aa kar khara
+    });
+
+    test(
+      'jhuk jao to seene ki oonchai ka neza sar ke oopar se guzar jata hai',
+      () {
+        World throwAt({required bool duck}) {
+          final w = World(
+            const Level(
+              solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+              spikes: [],
+              saws: [],
+              checkpoints: [Offset(500, 400)],
+              goalX: 2900,
+            ),
+          );
+          w.update(0.05, Input()..down = duck);
+          // Asli nezon ki tarah: gravity ka hisaab laga kar seene (-31) pe pahunchta hai
+          const t = 80 / 320;
+          w.spears.add(
+            Spear(
+              w.pos.dx - 80,
+              w.pos.dy - 31,
+              320,
+              -World.spearGravity * t / 2,
+            ),
+          );
+          for (var k = 0; k < 40; k++) {
+            w.update(1 / 60, Input()..down = duck);
+          }
+          return w;
+        }
+
+        expect(throwAt(duck: false).state, PlayerState.dead);
+        expect(throwAt(duck: true).state, PlayerState.alive);
+      },
+    );
+
+    test('shikaari bhi gire darakht ke neeche se jhuk kar guzarte hain', () {
+      final w = World(withLog(chase: const Chase(startX: 0, throwEvery: 999)))
+        ..cinematic = true
+        ..pos = const Offset(900, 400);
+      var crouched = false;
+      for (var k = 0; k < 12 * 60; k++) {
+        w.update(1 / 60, Input()..right = true);
+        crouched |= w.hunters.any((b) => b.crouch);
+      }
+      expect(crouched, isTrue);
+      for (final b in w.hunters) {
+        expect(b.x, greaterThan(400), reason: 'darakht ke paar');
+        expect(b.y, closeTo(400, 1));
+      }
+    });
+  });
+
   group('dhaal', () {
     World withShield() {
       final w = World(

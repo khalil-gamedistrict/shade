@@ -839,3 +839,106 @@ void drawBrokenBranch(
       ..color = const Color(0x44E0E0E0),
   );
 }
+
+/// Gira hua bara darakht: tana do khare darakhton (peeche, halke) ke dushakhon mein phansa hua — neeche jhuk kar
+/// guzarne ki jagah, oopar tooti shaakhon aur patton ka ghana jhund (kood ke paar nahi). [r] thos hissa.
+void drawFallenTree(
+  Canvas canvas,
+  Rect r,
+  double ground,
+  double t,
+  double wind,
+  int seed,
+) {
+  const thick = 44.0;
+  final trunkY = r.bottom - thick / 2;
+  // Peeche ke do darakht (depth mein — raasta nahi rokte), dushakhe mein tana tika
+  final back = Paint()..color = _ink.withValues(alpha: 0.42);
+  for (final (x, side) in [(r.left + 4, -1.0), (r.right - 4, 1.0)]) {
+    final path = Path()
+      ..moveTo(x - 6, ground)
+      ..lineTo(x - 4, trunkY + 10)
+      ..lineTo(x + side * 26 - 3, r.top + 20) // bahar wali shaakh
+      ..lineTo(x + side * 26 + 3, r.top + 18)
+      ..lineTo(x + 2, trunkY - 4)
+      ..lineTo(x - side * 14 + 2, trunkY - 34) // andar wali shaakh (dushakha)
+      ..lineTo(x - side * 14 - 3, trunkY - 32)
+      ..lineTo(x + 5, trunkY + 12)
+      ..lineTo(x + 6, ground)
+      ..close();
+    canvas.drawPath(path, back);
+  }
+  // Patton ka ghana jhund (tane ke oopar) — tooti tehniyon pe
+  final leaf = Paint()..color = palette.colorful ? palette.nearLeaf : _ink;
+  final twig = Paint()
+    ..color = _ink
+    ..strokeCap = StrokeCap.round
+    ..style = PaintingStyle.stroke;
+  double h(int i, int salt) => _hash(i + seed * 37, salt);
+  for (var k = 0; k < 7; k++) {
+    final x0 = r.left + 8 + h(k, 103) * (r.width - 16);
+    final end = Offset(
+      r.left + h(k, 104) * r.width,
+      r.top + 14 + h(k, 105) * (trunkY - r.top - 50),
+    );
+    twig.strokeWidth = 2.5 + h(k, 106) * 2.5;
+    canvas.drawPath(
+      Path()
+        ..moveTo(x0, trunkY - thick * 0.3)
+        ..quadraticBezierTo(
+          (x0 + end.dx) / 2 + (h(k, 110) - 0.5) * 20,
+          (trunkY + end.dy) / 2,
+          end.dx,
+          end.dy,
+        ),
+      twig,
+    );
+  }
+  for (var j = 0; j < 70; j++) {
+    final c = Offset(
+      r.left - 10 + h(j, 107) * (r.width + 20),
+      r.top + 6 + pow(h(j, 108), 0.8) * (trunkY - r.top - 30),
+    );
+    final size = 6 + h(j, 111) * 5;
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(h(j, 109) * pi * 2 + sin(t * 1.3 + j) * 0.08 + wind * 0.1);
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, 0)
+        ..quadraticBezierTo(size * 0.5, -size * 0.35, size, 0)
+        ..quadraticBezierTo(size * 0.5, size * 0.35, 0, 0),
+      leaf,
+    );
+    canvas.restore();
+  }
+  // Tana: wahi aandhi mein tooti shaakh ki shakal, bara — chira hua sira, gaanthein, phooti shaakh
+  canvas.save();
+  canvas.translate(r.center.dx, trunkY);
+  if (seed.isOdd) canvas.scale(-1, 1);
+  drawBrokenBranch(
+    canvas,
+    r.width + 40,
+    thick,
+    seed + 3,
+    t,
+    wind,
+    falling: false,
+  );
+  canvas.restore();
+  // Neeche latakti kaai (chhoti — raasta khula)
+  final moss = Paint()
+    ..color = _ink
+    ..strokeWidth = 1.2
+    ..strokeCap = StrokeCap.round;
+  for (var k = 0; k < 6; k++) {
+    final x = r.left + 8 + h(k, 101) * (r.width - 16);
+    final len = 3 + h(k, 102) * 6;
+    final sway = sin(t * 1.5 + k) * 1.2 + wind * 2;
+    canvas.drawLine(
+      Offset(x, r.bottom - 2),
+      Offset(x + sway, r.bottom + len),
+      moss,
+    );
+  }
+}

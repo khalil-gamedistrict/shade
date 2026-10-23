@@ -23,9 +23,18 @@ Input autopilot(World w, {double stopAt = double.infinity}) {
   ];
   final danger = hazards.any((h) => h.overlaps(ahead.inflate(4)));
   // Saamne oonchi cheez (deewar, seedhi, giri shaakh)
+  // Gira darakht: neeche jagah hai — jhuk kar nikal jao (kood ke nahi)
+  bool low(Rect s) => s.bottom <= feet - World.crouchH - 1;
+  final duck = solids.any(
+    (s) =>
+        low(s) &&
+        s.bottom > feet - World.playerH - 12 &&
+        s.right > x - 20 &&
+        s.left < x + 40,
+  );
   final rise = level.terrainTop(x + 16);
   final wall =
-      solids.any((s) => s.overlaps(ahead) && s.top < feet - 3) ||
+      solids.any((s) => s.overlaps(ahead) && s.top < feet - 3 && !low(s)) ||
       (rise != null && rise < feet - World.stepUp);
   // Saamne zameen khatam (gaddha)
   // Dhalan ya deewar se neeche utarna gaddha nahi — sirf jahan aagay zameen hi na ho (ya bohot neeche)
@@ -43,6 +52,7 @@ Input autopilot(World w, {double stopAt = double.infinity}) {
 
   final gap = !groundAt(x + 34);
 
-  input.jump = danger || wall || gap;
+  input.down = duck;
+  input.jump = !duck && (danger || wall || gap);
   return input;
 }

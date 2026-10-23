@@ -22,6 +22,9 @@ Kahani bina alfaaz ke dikhayi jaati hai (Limbo ki tarah): silhouettes, awaazein,
   khokhli jagah mein chhup jata hai (aankhen band, saans roke). Shikaari daurte hue theek us ke oopar aa kar rukte
   hain, idhar udhar dekhte hain (chhat se mitti jharti hai), phir us ke oopar se guzar kar aagay bhaag jaate hain.
   Hero aankhen kholta hai: *"Safe — for now."*
+- **Jhukna** (↓ / S / neeche ka button): hero ghutnon ke bal jhuk kar aahista chalta hai. Seene ki oonchai pe aate
+  neze sar ke oopar se guzar jaate hain. Har chapter mein ek **gira hua bara darakht** — tana do darakhton ke
+  dushakhon mein phansa, kood ke paar nahi, sirf neeche se jhuk kar. Shikaari bhi jhuk kar guzarte hain.
 - Pakre jaane pe shikaari akele hero ko ghere mein lete hain — ek saamne, ek ghoom kar peeche se, kaman wala thora door.
 - Awaaz: jang ki cheekh se shuru, dhol jo qareeb aate hi tez ho, beech beech mein cheekhein, hero ki tez saans.
 

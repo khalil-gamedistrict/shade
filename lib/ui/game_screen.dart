@@ -138,6 +138,9 @@ class _GameScreenState extends State<GameScreen>
         key == LogicalKeyboardKey.arrowUp ||
         key == LogicalKeyboardKey.keyW) {
       input.jump = down;
+    } else if (key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.keyS) {
+      input.down = down; // jhukna
     } else if (key == LogicalKeyboardKey.keyE && down) {
       _breakFree();
     } else if (key == LogicalKeyboardKey.escape && !down) {
@@ -259,6 +262,16 @@ class _GameScreenState extends State<GameScreen>
                   onChanged: (v) => input.right = v,
                 ),
               ],
+            ),
+          ),
+          // Jhukna: jump ke baayen neeche — angootha jump se khiska kar dabaye
+          Positioned(
+            right: 184,
+            bottom: 20,
+            child: _HoldButton(
+              icon: Icons.keyboard_double_arrow_down,
+              size: 80,
+              onChanged: (v) => input.down = v,
             ),
           ),
           // Jump: thora oopar aur andar (left) — angootha qudrati taur pe wahan parta hai

@@ -75,6 +75,18 @@ class WorldPainter extends CustomPainter {
       drawHut(canvas, x, _groundAt(x), t, world.windAt(x), i);
     }
     if (level.home) _village(canvas, camX, viewW);
+    for (var i = 0; i < level.logs.length; i++) {
+      final r = level.logs[i];
+      if (r.right < camX - 80 || r.left > camX + viewW + 80) continue;
+      drawFallenTree(
+        canvas,
+        r,
+        _groundAt(r.center.dx),
+        t,
+        world.windAt(r.center.dx),
+        i,
+      );
+    }
     final waterY = level.waterY;
     if (waterY != null) {
       for (final (l, r) in _gaps(camX - 20, camX + viewW + 20)) {
@@ -1041,17 +1053,20 @@ class WorldPainter extends CustomPainter {
     }
     // Dhaal uthana: daurte daurte jhuk kar zameen se utha li (pehle pal mein haath neeche)
     final grab = world.time - world.pickupTime;
+    final crouch = world.crouching;
     drawFigure(
       canvas,
       look: Look.hero,
-      foot: world.pos,
+      foot: world.pos + Offset(0, crouch ? crouchDrop : 0),
       dir: world.facingRight ? 1 : -1,
       phase: world.walkPhase,
       moving: world.grounded && world.vx != 0,
       inAir: !world.grounded,
       time: world.time,
       wind: world.windAt(world.pos.dx),
-      pose: grab < 0.32 ? _scoop : null,
+      pose: crouch
+          ? crouchPose(world.walkPhase, moving: world.vx != 0)
+          : (grab < 0.32 ? _scoop : null),
       backShield: grab < 0.18 ? 0 : world.shield,
     );
     if (grab < 0.18) {
@@ -1232,7 +1247,10 @@ class WorldPainter extends CustomPainter {
       drawFigure(
         canvas,
         look: looks[i],
-        foot: Offset(x, b.y),
+        pose: b.crouch
+            ? crouchPose(world.time * 6 + i, moving: b.vx.abs() > 1)
+            : null,
+        foot: Offset(x, b.y + (b.crouch ? crouchDrop : 0)),
         dir: b.vx.abs() > 1
             ? b.vx.sign
             : world.hunterDir, // jidhar ja raha; khara ho to idhar udhar dekhta

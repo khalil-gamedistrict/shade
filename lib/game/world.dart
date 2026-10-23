@@ -6,6 +6,7 @@ class Input {
   bool left = false;
   bool right = false;
   bool jump = false;
+  bool down = false; // jhukna — neeche se guzarna, nezon se bachna
 }
 
 /// Upar neeche ghoomne wala saw blade
@@ -146,6 +147,7 @@ class Chase {
 class HunterBody {
   double x, y, vx = 0, vy = 0;
   bool grounded = true;
+  bool crouch = false; // gire darakht ke neeche se jhuk kar guzar raha
   HunterBody(this.x, this.y);
 }
 
@@ -201,6 +203,9 @@ class Level {
   final List<Offset> shields;
   // Aakhir mein apna gaon: qabeela khara ho jata hai, shikaari laut jaate hain (gaddha nahi)
   final bool home;
+  // Gira hua bara darakht: tana patthar pe tika (neeche jhuk kar guzarne ki jagah), oopar ghani shaakhen —
+  // kood ke paar nahi. Rect = thos hissa (neeche ki khaali jagah iss mein nahi).
+  final List<Rect> logs;
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -228,6 +233,7 @@ class Level {
     this.pools = const [],
     this.shields = const [],
     this.home = false,
+    this.logs = const [],
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });
@@ -370,6 +376,10 @@ class Level {
               for (final p in t.points) p + Offset(dx, 0),
             ], bottom: t.bottom),
       ],
+      logs: [
+        for (final l in logs)
+          if (inside(l.left)) sh(l),
+      ],
       shields: [
         for (final d in shields)
           if (inside(d.dx)) d + Offset(dx, 0),
@@ -490,6 +500,8 @@ class Level {
       ]),
     ],
     pools: [Pool(6196, 6259, 406, deep: true)],
+    // Gira bara darakht — jhuk kar neeche se (zameen ~399)
+    logs: [Rect.fromLTRB(6000, 224, 6080, 367)],
     spikes: [
       Rect.fromLTWH(760, 384, 48, 16),
       Rect.fromLTWH(1850, 384, 64, 16),
@@ -566,6 +578,7 @@ enum PlayerState { alive, fighting, dead, won }
 enum GameEvent {
   step,
   wade, // paani mein qadam (chhap-chhap)
+  crouch, // jhuka (patton ki sarsarahat)
   shieldPickup, // raaste se dhaal uthayi
   shieldBlock, // neza dhaal pe laga
   shieldBreak, // teesre neze pe dhaal toot gayi
@@ -590,6 +603,8 @@ enum GameEvent {
 
 class World {
   static const double playerW = 22, playerH = 44;
+  static const double crouchH = 26; // jhuke hue ki oonchai
+  static const crouchSpeed = 0.45; // jhuk kar chaal (poori raftaar ka hissa)
   // Dheemi, sochi samjhi chaal (Limbo jaisi) aur hawa mein zara der tairti jump
   static const double speed = 150, gravity = 1150, jumpVelocity = 520;
   static const double respawnDelay = 2.4; // girne aur tarapne ka manzar dikhe
@@ -601,6 +616,7 @@ class World {
   late Offset pos; // player ka bottom-center
   double vx = 0, vy = 0;
   bool grounded = false;
+  bool crouching = false;
   bool facingRight = true;
   double walkPhase = 0;
   double time = 0;
@@ -817,6 +833,7 @@ class World {
     ...level.runoff,
     for (var i = 0; i < level.branches.length; i++)
       if (branchState[i] == 2) branchRect(i),
+    ...level.logs,
   ];
 
   /// Is jagah abhi hawa kitni hai — level ki hawa + jhonke (gusts) jo waqt ke saath aate jaate hain
@@ -830,7 +847,20 @@ class World {
   double rainAt(double x) => level.rain.at(x);
 
   Rect get playerRect =>
-      Rect.fromLTWH(pos.dx - playerW / 2, pos.dy - playerH, playerW, playerH);
+      Rect.fromLTWH(pos.dx - playerW / 2, pos.dy - _h, playerW, _h);
+
+  double get _h => crouching ? crouchH : playerH;
+
+  /// Yahan khare ho sakte hain? (sar ke oopar koi cheez nahi — warna jhuke rehna parta hai)
+  bool _roomToStand(List<Rect> solids) {
+    final r = Rect.fromLTWH(
+      pos.dx - playerW / 2 + 1,
+      pos.dy - playerH,
+      playerW - 2,
+      playerH - crouchH,
+    );
+    return !solids.any(r.overlaps);
+  }
 
   void update(double dt, Input input) {
     // Bara dt (lag) physics ko tor deta hai, is liye chhote steps mein todo
@@ -884,9 +914,15 @@ class World {
     _updateSpears(dt);
     final solids = solidsNow();
 
+    // Jhukna: zameen pe neeche dabao. Sar ke oopar rukawat ho to khare nahi ho sakte.
+    final wasCrouching = crouching;
+    crouching =
+        grounded && (input.down || (crouching && !_roomToStand(solids)));
+    if (crouching && !wasCrouching) events.add(GameEvent.crouch);
     vx = (input.right ? speed : 0) - (input.left ? speed : 0);
+    if (crouching) vx *= crouchSpeed;
     if (vx != 0) facingRight = vx > 0;
-    if (input.jump && grounded) {
+    if (input.jump && grounded && !crouching) {
       vy = -jumpVelocity;
       grounded = false;
       events.add(GameEvent.jump);
@@ -929,7 +965,7 @@ class World {
         final m = k - level.solids.length;
         if (m >= 0 && m < level.movers.length) _standingOn = m;
       } else {
-        pos = Offset(pos.dx, s.bottom + playerH);
+        pos = Offset(pos.dx, s.bottom + _h);
       }
       vy = 0;
     }
@@ -945,7 +981,9 @@ class World {
     if (grounded && !wasGrounded && fallSpeed > 300) events.add(GameEvent.land);
 
     final oldPhase = walkPhase;
-    walkPhase = grounded && vx != 0 ? walkPhase + dt * 8.5 : 0;
+    walkPhase = grounded && vx != 0
+        ? walkPhase + dt * (crouching ? 6 : 8.5)
+        : 0;
     // Har aadhe chakkar pe ek qadam zameen pe parta hai
     if ((walkPhase / pi).floor() > (oldPhase / pi).floor()) {
       events.add(wading ? GameEvent.wade : GameEvent.step);
@@ -1220,7 +1258,8 @@ class World {
       final miss = aimed
           ? 0.0
           : (sin(time * 5.1) >= 0 ? 1 : -1) * (30 + 22 * sin(time * 2.3).abs());
-      final tx = pos.dx + vx * t * 0.8 + miss, ty = pos.dy - 24;
+      // Seene ki oonchai pe — jhuk jao to sar ke oopar se guzar jata hai
+      final tx = pos.dx + vx * t * 0.8 + miss, ty = pos.dy - 31;
       spears.add(
         Spear(
           sx,
@@ -1286,6 +1325,7 @@ class World {
       ...level.ground,
       for (var i = 0; i < level.branches.length; i++)
         if (branchState[i] == 2) branchRect(i),
+      ...level.logs,
     ];
     final hazards = [
       ...level.spikes,
@@ -1330,10 +1370,14 @@ class World {
             ? Rect.fromLTRB(b.x + 10, b.y - 60, b.x + 50, b.y + 1)
             : Rect.fromLTRB(b.x - 50, b.y - 60, b.x - 10, b.y + 1);
         final danger = hazards.any((h) => h.overlaps(ahead.inflate(4)));
-        // Saamne oonchi cheez: deewar, ya teele ki itni oonchi/tez charhai ke chal kar na chadh saken
+        // Saamne oonchi cheez: deewar, ya teele ki itni oonchi/tez charhai ke chal kar na chadh saken.
+        // Gira darakht (neeche jagah) deewar nahi — us ke neeche jhuk kar nikal jaate hain.
+        bool low(Rect s) => s.bottom <= b.y - crouchH - 1;
         final rise = level.terrainTop(b.x + dir * 14);
         final wall =
-            solids.any((s) => s.overlaps(ahead) && s.top < b.y - 3) ||
+            solids.any(
+              (s) => s.overlaps(ahead) && s.top < b.y - 3 && !low(s),
+            ) ||
             (rise != null && rise < b.y - stepUp) ||
             _terrainBlocks(b.x, b.x + dir * 3, b.y);
         final slope = level.terrainTop(b.x + dir * 24);
@@ -1395,15 +1439,26 @@ class World {
       }
       b.vy += gravity * dt;
       // Pehle aagay, deewar se takkar; phir oopar neeche, zameen pe tikna. Paani mein dheeme.
-      final nx = b.x + b.vx * dt * (_inWater(Offset(b.x, b.y)) ? 0.55 : 1);
+      // Sar ke oopar ya bilkul aagay gira darakht — jhuk jao
+      b.crouch =
+          b.grounded &&
+          level.logs.any(
+            (l) =>
+                l.bottom <= b.y - crouchH - 1 &&
+                l.bottom > b.y - playerH - 12 &&
+                b.x + 30 > l.left &&
+                b.x - 30 < l.right,
+          );
+      final h = b.crouch ? crouchH : playerH;
+      final nx =
+          b.x +
+          b.vx *
+              dt *
+              (_inWater(Offset(b.x, b.y)) ? 0.55 : 1) *
+              (b.crouch ? crouchSpeed : 1);
       if (!_terrainBlocks(b.x, nx, b.y)) b.x = nx;
       for (final s in solids) {
-        final r = Rect.fromLTWH(
-          b.x - playerW / 2,
-          b.y - playerH,
-          playerW,
-          playerH,
-        );
+        final r = Rect.fromLTWH(b.x - playerW / 2, b.y - h, playerW, h);
         if (!r.overlaps(s)) continue;
         if (b.grounded && s.top >= b.y - 4) {
           b.y = s.top; // zara si kinari — chadh jao
@@ -1415,18 +1470,13 @@ class World {
       b.grounded = false;
       b.y += b.vy * dt;
       for (final s in solids) {
-        final r = Rect.fromLTWH(
-          b.x - playerW / 2,
-          b.y - playerH,
-          playerW,
-          playerH,
-        );
+        final r = Rect.fromLTWH(b.x - playerW / 2, b.y - h, playerW, h);
         if (!r.overlaps(s)) continue;
         if (b.vy > 0) {
           b.y = s.top;
           b.grounded = true;
         } else {
-          b.y = s.bottom + playerH;
+          b.y = s.bottom + h;
         }
         b.vy = 0;
       }
@@ -1665,6 +1715,7 @@ class World {
         branchVy[i] = 0;
       }
     }
+    crouching = false;
     state = PlayerState.alive;
   }
 }
