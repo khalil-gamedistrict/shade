@@ -1,5 +1,5 @@
-// Ads: abhi sirf placeholder. Asli rewarded ad (jaise Google AdMob) lagana ho to [AdService] ka
-// naya implementation banao aur main.dart mein PlaceholderAds ki jagah de do — baaqi game wahi rahega.
+// Ads: [AdService] ke peeche asli ya nakli ad. Android pe AdMob (admob_ads.dart, keys ad_keys.dart),
+// web aur tests mein [PlaceholderAds] — ads_factory.dart chunta hai.
 import 'dart:async';
 
 import 'package:flutter/material.dart';

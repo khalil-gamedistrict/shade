@@ -7,6 +7,7 @@ import 'game/palette.dart';
 import 'game/world.dart';
 import 'game/sound.dart';
 import 'services/ads.dart';
+import 'services/ads_factory.dart';
 import 'ui/game_screen.dart';
 import 'ui/menu.dart';
 import 'ui/trailer.dart';
@@ -59,7 +60,7 @@ class _ShadeHomeState extends State<ShadeHome> {
   // Rangeen subah wale chapter ki apni tasveerein (pehli dafa khulne pe banti hain)
   late final dawnJungle = Jungle(colors: Palette.dawn);
   Chapter chapter = chapters.first;
-  final AdService ads = PlaceholderAds(); // asli ads aane pe yahan badalna
+  final AdService ads = createAds(); // Android pe AdMob (keys: services/ad_keys.dart), web pe nakli
 
   @override
   void initState() {

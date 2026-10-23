@@ -19,7 +19,7 @@ android {
         applicationId = "com.khalil.shade"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(24, flutter.minSdkVersion) // AdMob ko kam se kam 24 chahiye
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -27,6 +27,11 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // AdMob App ID: lib/services/ad_keys.dart se parhte hain — keys sirf ek jagah badalni parein
+        val adKeys = rootProject.file("../lib/services/ad_keys.dart").readText()
+        val appId = Regex("admobAndroidAppId\\s*=\\s*'([^']+)'").find(adKeys)?.groupValues?.get(1)
+            ?: error("ad_keys.dart mein admobAndroidAppId nahi mila")
+        manifestPlaceholders["admobAppId"] = appId
     }
 
     buildTypes {
