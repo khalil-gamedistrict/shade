@@ -65,7 +65,7 @@ Level hunt() {
     ],
     spikes: [Rect.fromLTWH(1812, y(1836) - 14, 48, 16)],
     traps: [Rect.fromLTWH(320, y(337) - 10, 34, 10)],
-    saws: const [Saw(2490, 320, speed: 1.5)],
+    saws: const [],
     pendulums: const [Pendulum(Offset(1190, 122), 150, speed: 1.4)],
     branches: const [Branch(1600, 1470)],
     checkpoints: [
@@ -74,7 +74,14 @@ Level hunt() {
       Offset(2200, y(2200)),
     ],
     goalX: 2580,
-    chase: const Chase(startX: 500),
+    // Pehla chapter: sab se aasaan — shikaari dheeme, door, kam neze
+    chase: const Chase(
+      startX: 500,
+      speed: 112,
+      maxBehind: 570,
+      throwEvery: 4.6,
+      aimEvery: 5,
+    ),
     wind: const Profile([(0, 0.2), (1500, 0.45), (2400, 0.6)]),
     rain: const Profile([(0, 0), (1300, 0.15), (2100, 0.55), (2700, 0.8)]),
   );
@@ -167,7 +174,13 @@ Level ashes() {
       Offset(2440, y(2440)),
     ],
     goalX: 3000,
-    chase: const Chase(startX: 250),
+    chase: const Chase(
+      startX: 250,
+      speed: 118,
+      maxBehind: 530,
+      throwEvery: 4.0,
+      aimEvery: 4,
+    ),
     wind: const Profile([(0, 0.3), (3100, 0.4)]),
   );
 }
@@ -199,7 +212,11 @@ Level river() {
     Offset(1930, 394),
     Offset(1990, 400),
     Offset(2110, 400), // kaante
-    Offset(2180, 402),
+    Offset(2140, 404),
+    Offset(2160, 440),
+    Offset(2185, 470), // gehra gadha
+    Offset(2210, 440),
+    Offset(2232, 404),
     Offset(2320, 400), // jhoolta lakkar
     Offset(2360, 396),
     Offset(2402, 400),
@@ -220,7 +237,7 @@ Level river() {
     mood: Mood.river,
     waterY: 432,
     terrain: const [a, b, c, d],
-    pools: const [Pool(2585, 2700, 405)],
+    pools: const [Pool(2585, 2700, 405), Pool(2148, 2224, 408, deep: true)],
     solids: const [
       Rect.fromLTWH(690, 396, 100, 204), // patthar
       Rect.fromLTWH(1530, 400, 70, 200), // darya ke beech patthar
@@ -247,10 +264,13 @@ Level river() {
       Rect.fromLTWH(1050, y(1074) - 14, 48, 16),
       Rect.fromLTWH(2050, y(2074) - 14, 48, 16),
     ],
-    saws: const [],
-    pendulums: const [Pendulum(Offset(2250, 170), 175, speed: 1.5)],
+    saws: const [Saw(470, 300, speed: 1.4), Saw(1180, 300, speed: 1.6)],
+    pendulums: const [Pendulum(Offset(2290, 170), 175, speed: 1.5)],
     branches: const [Branch(2780, 2660)],
-    traps: [Rect.fromLTWH(2850, y(2867) - 10, 34, 10)],
+    traps: [
+      Rect.fromLTWH(180, y(197) - 10, 34, 10),
+      Rect.fromLTWH(2850, y(2867) - 10, 34, 10),
+    ],
     checkpoints: [
       const Offset(100, 400),
       Offset(920, y(920)),
@@ -258,7 +278,13 @@ Level river() {
       Offset(2530, y(2530)),
     ],
     goalX: 3000,
-    chase: const Chase(startX: 200),
+    chase: const Chase(
+      startX: 200,
+      speed: 123,
+      maxBehind: 500,
+      throwEvery: 3.6,
+      aimEvery: 3,
+    ),
     wind: const Profile([(0, 0.25), (3100, 0.3)]),
     rain: const Profile([(0, 0.2), (3100, 0.35)]),
   );
@@ -333,11 +359,25 @@ Level cliffs() {
       Mover(Rect.fromLTWH(2560, 345, 80, 16), dy: 40, speed: 1.1),
       Mover(Rect.fromLTWH(2840, 345, 80, 16), dx: 45, speed: 1.0, phase: 1),
     ],
-    spikes: [Rect.fromLTWH(3150, y(3174) - 14, 48, 16)],
-    traps: [Rect.fromLTWH(3300, y(3317) - 10, 34, 10)],
-    saws: const [Saw(2350, 290, speed: 1.6)],
-    pendulums: const [Pendulum(Offset(1380, 100), 165, speed: 1.5)],
-    branches: const [Branch(1650, 1530)],
+    spikes: [
+      Rect.fromLTWH(2000, y(2024) - 14, 48, 16),
+      Rect.fromLTWH(3150, y(3174) - 14, 48, 16),
+    ],
+    traps: [
+      Rect.fromLTWH(200, y(217) - 10, 34, 10),
+      Rect.fromLTWH(2225, y(2242) - 10, 34, 10),
+      Rect.fromLTWH(3300, y(3317) - 10, 34, 10),
+    ],
+    saws: const [
+      Saw(1120, 200, speed: 1.7),
+      Saw(2350, 290, speed: 1.6),
+      Saw(3080, 290, speed: 1.9),
+    ],
+    pendulums: const [
+      Pendulum(Offset(1380, 100), 165, speed: 1.5),
+      Pendulum(Offset(1920, 125), 175, speed: 1.7, phase: 1),
+    ],
+    branches: const [Branch(1650, 1530), Branch(3380, 3250)],
     checkpoints: [
       const Offset(100, 400),
       Offset(1030, y(1030)),
@@ -345,7 +385,13 @@ Level cliffs() {
       Offset(3040, y(3040)),
     ],
     goalX: 3500,
-    chase: const Chase(startX: 200),
+    chase: const Chase(
+      startX: 200,
+      speed: 133,
+      maxBehind: 440,
+      throwEvery: 2.8,
+      aimEvery: 2,
+    ),
     wind: const Profile([
       (0, 0.3),
       (1000, -0.5),
@@ -424,11 +470,25 @@ Level homecoming() {
       Mover(Rect.fromLTWH(2075, 370, 90, 18), dx: 50, speed: 0.9),
       Mover(Rect.fromLTWH(2370, 365, 80, 18), dy: 40, speed: 1.2, phase: 1),
     ],
-    spikes: [Rect.fromLTWH(950, y(974) - 14, 48, 16)],
-    traps: [Rect.fromLTWH(2900, y(2917) - 10, 34, 10)],
-    saws: const [Saw(2700, 320, speed: 1.8)],
-    pendulums: const [Pendulum(Offset(1150, 170), 175, speed: 1.6)],
-    branches: const [Branch(1850, 1760)],
+    spikes: [
+      Rect.fromLTWH(950, y(974) - 14, 48, 16),
+      Rect.fromLTWH(2790, y(2814) - 14, 40, 16),
+    ],
+    traps: [
+      Rect.fromLTWH(200, y(217) - 10, 34, 10),
+      Rect.fromLTWH(1220, y(1237) - 10, 34, 10),
+      Rect.fromLTWH(2900, y(2917) - 10, 34, 10),
+    ],
+    saws: const [
+      Saw(860, 330, speed: 1.8), // keechar ke oopar
+      Saw(1600, 300, speed: 2.0),
+      Saw(2700, 320, speed: 1.8),
+    ],
+    pendulums: const [
+      Pendulum(Offset(1150, 170), 175, speed: 1.6),
+      Pendulum(Offset(2600, 170), 175, speed: 1.9, phase: 2),
+    ],
+    branches: const [Branch(1850, 1760), Branch(3010, 2890)],
     checkpoints: [
       const Offset(100, 400),
       Offset(790, y(790)),
@@ -436,7 +496,14 @@ Level homecoming() {
       Offset(2540, y(2540)),
     ],
     goalX: 3150,
-    chase: const Chase(startX: 200),
+    // Aakhri chapter: sab se mushkil
+    chase: const Chase(
+      startX: 200,
+      speed: 138,
+      maxBehind: 410,
+      throwEvery: 2.4,
+      aimEvery: 2,
+    ),
     wind: const Profile([(0, 0.4), (2000, 0.8), (3400, 0.5)]),
     rain: const Profile([(0, 0.6), (1500, 0.9), (3400, 1.0)]),
   );

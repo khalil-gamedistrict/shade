@@ -726,6 +726,7 @@ class WorldPainter extends CustomPainter {
   }
 
   void _player(Canvas canvas) {
+    if (!world.showHero) return;
     final dir = world.facingRight ? 1.0 : -1.0;
     if (world.state == PlayerState.won && world.sitting) {
       // Chattan se tek laga kar baitha, saans leta hua

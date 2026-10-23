@@ -448,6 +448,65 @@ void main() {
     });
   });
 
+  test(
+    'trailer: 7 manzar, kul lambai pehle jitni (18 s), shikaari atakte nahi',
+    () {
+      expect(trailerShots.length, 7);
+      expect(
+        trailerShots.fold(0.0, (sum, s) => sum + s.duration),
+        closeTo(18, 0.01),
+      );
+      for (final shot in trailerShots.where((s) => s.chase)) {
+        final w = World(shot.level())
+          ..pos = shot.start
+          ..cinematic = true
+          ..chaseActive = true
+          ..hunterX = shot.start.dx - (shot.huntersBehind ?? 260);
+        var stuck = 0;
+        for (var t = 0.0; t < shot.duration; t += 1 / 60) {
+          final before = [for (final b in w.hunters) b.x];
+          w.update(1 / 60, autopilot(w));
+          if (w.state == PlayerState.alive) {
+            w.hunterX = max(w.hunterX, w.pos.dx - (shot.huntersBehind ?? 260));
+          }
+          if (t < 0.4 || w.state != PlayerState.alive) continue;
+          for (var i = 0; i < 3; i++) {
+            final step = w.hunters[i].x - before[i];
+            // Daurte jhund mein koi ruk jaye ya ulta jhatka khaye
+            if (w.hunters[i].grounded && (step < 0.5 || step > 5)) stuck++;
+          }
+        }
+        expect(stuck, lessThan(10), reason: 'shot ${shot.start}');
+      }
+    },
+  );
+
+  test('mushkil chapter ba chapter barhti hai (shikaari aur khatre)', () {
+    double danger(Level l) {
+      final n =
+          l.spikes.length +
+          l.traps.length +
+          l.fires.length +
+          l.saws.length +
+          l.pendulums.length +
+          l.branches.length +
+          l.pools.where((p) => p.deep).length;
+      return n / (l.goalX - 100);
+    }
+
+    final levels = [for (final c in chapters) c.level!()];
+    for (var i = 1; i < levels.length; i++) {
+      final a = levels[i - 1], b = levels[i];
+      final why = 'chapter ${i + 1}';
+      expect(danger(b), greaterThan(danger(a)), reason: '$why khatre');
+      expect(b.chase!.speed, greaterThan(a.chase!.speed), reason: why);
+      expect(b.chase!.throwEvery, lessThan(a.chase!.throwEvery), reason: why);
+      expect(b.chase!.maxBehind, lessThan(a.chase!.maxBehind), reason: why);
+      expect(b.chase!.aimEvery, lessThanOrEqualTo(a.chase!.aimEvery));
+      expect(b.chase!.speed, lessThan(World.speed), reason: 'bhaag sakte hon');
+    }
+  });
+
   group('dhaal', () {
     World withShield() {
       final w = World(
@@ -671,14 +730,21 @@ void main() {
     });
 
     test('trailer ke har shot mein hero khud aage barhta hai, gaddhay mein nahi girta', () {
-      for (final shot in trailerShots) {
+      for (final shot in trailerShots.where((s) => s.runs)) {
         final w = World(shot.level())
           ..pos = shot.start
           ..cinematic = true;
         for (var t = 0.0; t < shot.duration; t += 1 / 60) {
           w.update(1 / 60, t >= shot.runAt ? autopilot(w) : Input());
         }
-        expect(w.pos.dy, lessThanOrEqualTo(410), reason: 'shot ${shot.start}');
+        // Gaddhay mein nahi gira (chhupne ke gaddhay mein jaana theek hai)
+        if (!w.underground) {
+          expect(
+            w.pos.dy,
+            lessThanOrEqualTo(410),
+            reason: 'shot ${shot.start}',
+          );
+        }
         expect(
           w.pos.dx,
           greaterThan(shot.start.dx + 100),

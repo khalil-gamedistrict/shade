@@ -11,11 +11,25 @@ class Chapter {
   bool get ready => level != null;
 }
 
+// Mushkil chapter ba chapter barhti hai: shikaari tez, qareeb, zyada aur zyada nishane wale neze.
+// (Khatron ki tadaad bhi har chapter mein barhti hai — levels.dart.)
+const stormChase = Chase(
+  startX: 100,
+  speed: 128,
+  maxBehind: 470,
+  throwEvery: 3.2,
+  aimEvery: 3,
+);
+
 final chapters = <Chapter>[
   const Chapter(1, 'The Hunt', hunt),
   const Chapter(2, 'Ashes', ashes),
   const Chapter(3, 'The River', river),
-  Chapter(4, 'The Storm', () => Level.first().slice(2160, 7300, goal: 7050)),
+  Chapter(
+    4,
+    'The Storm',
+    () => Level.first().slice(2160, 7300, goal: 7050, chase: stormChase),
+  ),
   const Chapter(5, 'The Cliffs', cliffs),
   const Chapter(6, 'Homecoming', homecoming),
 ];

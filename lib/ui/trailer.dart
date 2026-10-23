@@ -28,6 +28,10 @@ class TrailerShot {
   final bool camp; // gaon ka manzar: alaao, jhonpriyan, naachte log
   final double? raidAt; // is waqt jang ki cheekh aur shikaari aate hain
   final double runAt; // is waqt se hero bhaagta hai (pehle khara rehta hai)
+  final bool stalk; // jungle mein chhup kar aate shikaari — hero nahi dikhta
+  // chase: shikaari hero se itne peeche (warna [_hunterGap])
+  final double? huntersBehind;
+  final bool captionTop; // line oopar (neeche ka manzar na chhupe)
   const TrailerShot({
     required this.level,
     required this.start,
@@ -38,7 +42,13 @@ class TrailerShot {
     this.camp = false,
     this.raidAt,
     this.runAt = 0,
+    this.stalk = false,
+    this.huntersBehind,
+    this.captionTop = false,
   });
+
+  /// Is shot mein hero khud aagay daurta hai
+  bool get runs => !stalk && runAt < duration;
 }
 
 const _hunterGap = 260.0; // shikaari itne peeche — screen pe dikhte rahen
@@ -54,36 +64,70 @@ Level _village() => const Level(
   wind: Profile([(0, 0.15)]),
 );
 
+// 7 chhote manzar (kul 18 second) — kahani: sukoon, chhupe shikaari, hamla, jalta gaon, darya, toofan, chhupna
 final trailerShots = <TrailerShot>[
-  // Qabeela hansi khushi... phir jang ki cheekh, shikaari, sab bhaagte hain, hero bhi
+  // Qabeela alaao ke gird naachta hai, bachche khelte hain
   TrailerShot(
     level: _village,
     start: const Offset(540, 400),
-    duration: 8,
+    duration: 3.0,
     camp: true,
-    raidAt: 3.2,
-    runAt: 4.2,
-    captions: const [
-      (0.6, 3.0, 'They lived in peace.'),
-      (3.5, 7.4, 'Until the hunters came.'),
-    ],
+    runAt: 99,
+    captions: const [(0.3, 2.7, 'They lived in peace.')],
+  ),
+  // Andhere jungle mein neze liye shikaari dabe paon barhte hain
+  TrailerShot(
+    level: _village,
+    start: const Offset(2600, 400),
+    duration: 2.4,
+    stalk: true,
+    runAt: 99,
+    captions: const [(0.3, 2.2, 'But the forest was watching.')],
+  ),
+  // Jang ki cheekh — shikaari toot parte hain, sab bhaagte hain, hero bhi
+  TrailerShot(
+    level: _village,
+    start: const Offset(540, 400),
+    duration: 3.0,
+    camp: true,
+    raidAt: 0.5,
+    runAt: 1.3,
+    captions: const [(0.6, 2.8, 'Then the hunters came.')],
   ),
   // Jalta gaon, peeche shikaari, neze
   TrailerShot(
     level: ashes,
     start: const Offset(850, 400),
-    duration: 5,
+    duration: 2.2,
     chase: true,
-    captions: const [(0.8, 4.6, 'Run.')],
+    captions: const [(0.3, 2.0, 'The village burned.')],
+  ),
+  // Darya ki taraf daud
+  TrailerShot(
+    level: river,
+    start: const Offset(320, 400),
+    duration: 2.2,
+    chase: true,
+    captions: const [(0.3, 2.0, 'Run. Don\'t look back.')],
   ),
   // Toofan aur bijli
   TrailerShot(
     level: chapters[3].level!,
-    start: const Offset(3880, 400),
-    duration: 5,
+    start: const Offset(4300, 400),
+    duration: 2.2,
     chase: true,
-    lightningAt: 1.6,
-    captions: const [(0.6, 4.6, 'Through fire. Through the storm.')],
+    lightningAt: 0.7,
+    captions: const [(0.3, 2.0, 'Through the storm.')],
+  ),
+  // Zameen ke neeche chhupna — shikaari oopar se guzarte hain
+  TrailerShot(
+    level: chapters[0].level!,
+    start: const Offset(2500, 400),
+    duration: 3.0,
+    chase: true,
+    huntersBehind: 120,
+    captionTop: true, // neeche gaddha dikhe
+    captions: const [(0.5, 2.8, 'Hide. Survive. Get home.')],
   ),
 ];
 
@@ -173,8 +217,9 @@ class _TrailerScreenState extends State<TrailerScreen>
     if (shot.chase) {
       _world
         ..chaseActive = true
-        ..hunterX = shot.start.dx - _hunterGap;
+        ..hunterX = shot.start.dx - (shot.huntersBehind ?? _hunterGap);
     }
+    _world.showHero = !shot.stalk;
     _weather = Weather()..onThunder = (near) => widget.sound?.thunder(near);
     // Baarish pehle se barasti ho, khaali aasmaan se shuru na ho
     for (var k = 0; k < 120; k++) {
@@ -217,9 +262,14 @@ class _TrailerScreenState extends State<TrailerScreen>
       widget.sound?.play(GameEvent.chaseStart);
     }
     _world.update(dt, _t >= shot.runAt ? autopilot(_world) : Input());
-    if (_world.chaseActive && _t >= shot.runAt) {
+    if (_world.chaseActive &&
+        _t >= shot.runAt &&
+        _world.state == PlayerState.alive) {
       // Shikaari screen pe dikhte rahen
-      _world.hunterX = max(_world.hunterX, _world.pos.dx - _hunterGap);
+      _world.hunterX = max(
+        _world.hunterX,
+        _world.pos.dx - (shot.huntersBehind ?? _hunterGap),
+      );
     }
     final box = context.findRenderObject() as RenderBox?;
     if (box != null && box.hasSize) {
@@ -347,6 +397,48 @@ class _TrailerScreenState extends State<TrailerScreen>
     }
   }
 
+  /// Chhupe shikaari: jhuke hue, dabe paon, neze aagay — ferns ke beech se guzarte; aagay wala ruk kar
+  /// haath se ishaara karta hai
+  void _drawStalk(Canvas canvas) {
+    final t = _t, time = _world.time;
+    final base = _world.pos.dx;
+    const looks = [Look.feathers, Look.shield, Look.archer];
+    for (var i = 0; i < 3; i++) {
+      final pause = i == 0 && t > 1.3 && t < 1.9; // ishaara
+      final walked = t < 1.3 || i != 0
+          ? t * 70
+          : (pause ? 1.3 * 70 : (t - 0.6) * 70);
+      final x = base - 70 + walked - i * 70;
+      drawFigure(
+        canvas,
+        look: looks[i],
+        foot: Offset(x, 400),
+        dir: 1,
+        phase: t * 6 + i,
+        moving: !pause,
+        inAir: false,
+        time: time + i,
+        wind: _world.windAt(x),
+        scale: 1.06,
+        pose: pause
+            ? const FigurePose(
+                (0.25, -0.5),
+                (-0.25, -0.4),
+                (2.4, 0.6),
+                (0.4, 0.9),
+                lean: 0.25,
+              )
+            : (FigurePose(
+                (sin(t * 6 + i) * 0.5, -0.7 - max(0.0, cos(t * 6 + i)) * 0.6),
+                (-sin(t * 6 + i) * 0.5, -0.7 - max(0.0, -cos(t * 6 + i)) * 0.6),
+                (1.2, 0.5),
+                (0.6, 0.9),
+                lean: 0.35, // jhuke hue, dabe paon
+              )),
+      );
+    }
+  }
+
   void _finish() {
     if (_done) return;
     _done = true;
@@ -362,8 +454,9 @@ class _TrailerScreenState extends State<TrailerScreen>
   // Har shot ke shuru aur aakhir mein kaala fade
   double get _black {
     final d = trailerShots[_shot].duration;
-    if (_t < 0.6) return 1 - _t / 0.6;
-    if (d - _t < 0.6) return 1 - (d - _t) / 0.6;
+    const f = 0.35; // chhote manzar — fade bhi chhota
+    if (_t < f) return 1 - _t / f;
+    if (d - _t < f) return 1 - (d - _t) / f;
     return 0;
   }
 
@@ -406,7 +499,11 @@ class _TrailerScreenState extends State<TrailerScreen>
                       _world,
                       widget.jungle,
                       _weather,
-                      extra: trailerShots[_shot].camp ? _drawCamp : null,
+                      extra: trailerShots[_shot].camp
+                          ? _drawCamp
+                          : trailerShots[_shot].stalk
+                          ? _drawStalk
+                          : null,
                       repaint: _frame,
                     ),
                   ),
@@ -428,13 +525,16 @@ class _TrailerScreenState extends State<TrailerScreen>
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: h * 0.1,
+                  height:
+                      h *
+                      0.05, // neeche patli — zameen ke neeche ka gaddha dikhe
                   child: const ColoredBox(color: Colors.black),
                 ),
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: h * 0.14,
+                  top: trailerShots[_shot].captionTop ? h * 0.12 : null,
+                  bottom: trailerShots[_shot].captionTop ? null : h * 0.14,
                   child: Opacity(
                     opacity: _captionOpacity,
                     child: Text(

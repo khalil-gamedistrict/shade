@@ -132,11 +132,13 @@ class Chase {
   final double speed; // player (150) se thore dheeme — rukoge to pakar lenge
   final double maxBehind; // is se zyada peeche nahi rehte (hamesha qareeb)
   final double throwEvery; // har itne second baad neza
+  final int aimEvery; // har itne nezon mein ek seedha nishane pe (baaqi aas paas girte hain)
   const Chase({
     this.startX = 0,
     this.speed = 128,
     this.maxBehind = 470,
     this.throwEvery = 3.2,
+    this.aimEvery = 3,
   });
 }
 
@@ -292,7 +294,7 @@ class Level {
   /// Level ka [from]..[to] hissa alag chapter ke liye: sab kuch khiska kar [from] ko x=100 pe le aata hai,
   /// aur shuru mein thori zameen jor deta hai (taake player peeche gir na sake).
   /// [from] kisi zameen (top 400) ke shuru pe hona chahiye.
-  Level slice(double from, double to, {required double goal}) {
+  Level slice(double from, double to, {required double goal, Chase? chase}) {
     final dx = 100 - from;
     Rect sh(Rect r) => r.shift(Offset(dx, 0));
     bool inside(double x) => x >= from - 1 && x <= to;
@@ -373,14 +375,17 @@ class Level {
           if (inside(p.left))
             Pool(p.left + dx, p.right + dx, p.surface, deep: p.deep),
       ],
-      chase: chase == null
-          ? null
-          : Chase(
-              startX: max(chase!.startX + dx, 100),
-              speed: chase!.speed,
-              maxBehind: chase!.maxBehind,
-              throwEvery: chase!.throwEvery,
-            ),
+      chase:
+          chase ??
+          (this.chase == null
+              ? null
+              : Chase(
+                  startX: max(this.chase!.startX + dx, 100),
+                  speed: this.chase!.speed,
+                  maxBehind: this.chase!.maxBehind,
+                  throwEvery: this.chase!.throwEvery,
+                  aimEvery: this.chase!.aimEvery,
+                )),
       wind: shp(wind),
       rain: shp(rain),
     );
@@ -669,14 +674,17 @@ class World {
   /// Trailer ke liye: maut nahi hoti, aur peechha band kiya ja sakta hai
   bool cinematic = false;
   bool allowChase = true;
+  bool showHero = true; // trailer ke kuch manzar mein hero nahi dikhta
   bool hunterMoving = false; // daur rahe hain ya gaddhay ke kinare khare
   // Shikaari: [hunterX] woh jagah jahan aagay wala shikaari pahunchna chahta hai (peechha, gaddhay, panah ka
   // hisaab). Asal jism [hunters] hain — hero jaisi physics se chalte aur koodte hue wahan tak jaate hain.
   double _hx = -1000;
+  double _hxLast = -1000, _hxRate = 0;
   double get hunterX => _hx;
   set hunterX(double v) {
     final far = (v - _hx).abs() > 80;
     _hx = v;
+    if (far) _hxLast = v; // chhalaang ko raftaar na samjho
     if (far) _snapHunters(); // bari chhalaang (shuru, zinda hona, nazar se door) — jism wahin rakh do
   }
 
@@ -1199,9 +1207,10 @@ class World {
       _throwTimer = chase.throwEvery * (0.75 + wobble * 0.5);
       final sx = hunters.first.x, sy = hunters.first.y - 38;
       final t = (dist / 360).clamp(0.75, 1.3);
-      // Har teesra neza seedha nishane pe; baaqi aas paas girte hain (darate hain) —
+      // Har [Chase.aimEvery] wan neza seedha nishane pe; baaqi aas paas girte hain (darate hain) —
       // asal khatra pakra jaana hai, taake larai ka manzar aur Break Free khel mein aayen
-      final aimed = _throws++ % 3 == 2;
+      final aim = chase.aimEvery;
+      final aimed = _throws++ % aim == aim - 1;
       final miss = aimed
           ? 0.0
           : (sin(time * 5.1) >= 0 ? 1 : -1) * (30 + 22 * sin(time * 2.3).abs());
@@ -1263,6 +1272,10 @@ class World {
 
   void _updateHunterBodies(double dt) {
     if (!chaseActive) return;
+    // Jhund kitni tezi se aagay barh raha hai (bari chhalaang/teleport ko nazar-andaaz, naram)
+    final raw = ((_hx - _hxLast) / dt).clamp(-speed, speed);
+    _hxLast = _hx;
+    _hxRate += (raw - _hxRate) * min(1.0, dt * 8);
     final solids = [
       ...level.ground,
       for (var i = 0; i < level.branches.length; i++)
@@ -1295,9 +1308,15 @@ class World {
       // Insaani raftaar: hero se tez kabhi nahi
       // Zameen pe raftaar chuno; hawa mein (koodte waqt) raftaar wahi rehti hai
       if (b.grounded) {
-        b.vx = stunned || dx.abs() < 3
-            ? 0
-            : dx.sign * min(speed, max(60, dx.abs() * 4));
+        if (stunned) {
+          b.vx = 0;
+        } else if (_hxRate > 20) {
+          // Peechha jaari: jhund ki raftaar se daurna, jagah se peeche ho to tez, aagay ho to zara dheeme —
+          // lekin rukna nahi (warna rukte-chalte, atakte lagte hain)
+          b.vx = (_hxRate + dx * 3).clamp(_hxRate * 0.55, speed);
+        } else {
+          b.vx = dx.abs() < 3 ? 0 : dx.sign * min(speed, max(60, dx.abs() * 4));
+        }
       }
       final dir = b.vx.sign;
       if (b.grounded && dir != 0) {
