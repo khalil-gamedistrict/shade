@@ -110,7 +110,7 @@ class Pool {
 }
 
 /// Chapter ka mahaul — painter is ke hisaab se khaas cheezen banata hai
-enum Mood { forest, fire, river, cliffs, home }
+enum Mood { forest, fire, river, cliffs, home, dawn }
 
 /// Maut kaise hui — girne ka andaaz is pe depend karta hai
 enum DeathKind {
@@ -197,8 +197,10 @@ class Level {
   final double? waterY; // darya: is oonchai pe paani, gire to doob gaye
   final List<Terrain> terrain; // ooncha-neecha zameen (teelay, dhalan)
   final List<Pool> pools; // khara paani
-  final List<Offset>
-  shields; // raaste mein pari dhaal (zameen pe) — utha lo to neze rokti hai
+  // Raaste mein pari dhaal (zameen pe) — utha lo to neze rokti hai
+  final List<Offset> shields;
+  // Aakhir mein apna gaon: qabeela khara ho jata hai, shikaari laut jaate hain (gaddha nahi)
+  final bool home;
 
   /// Hawa: + right ki taraf, - left ki taraf. 1 = aandhi
   final Profile wind;
@@ -225,6 +227,7 @@ class Level {
     this.terrain = const [],
     this.pools = const [],
     this.shields = const [],
+    this.home = false,
     this.wind = const Profile([]),
     this.rain = const Profile([]),
   });
@@ -264,6 +267,7 @@ class Level {
   List<Rect> get runoff => _hideout.$2;
 
   (Rect?, List<Rect>) get _hideout => _hideoutCache[this] ??= () {
+    if (home) return (null, const <Rect>[]); // ghar pahunch gaye — chhupna nahi
     Rect? ground;
     for (final s in solids) {
       if (goalX - 10 >= s.left &&
@@ -652,6 +656,8 @@ class World {
   static const holeX = 16.0,
       seatX = 74.0; // goalX se: gaddhay ka munh, andar baithne ki jagah
   static const searchLength = 2.4;
+  static const homeX =
+      175.0; // ghar: hero alaao ke paas apne logon mein baith jata hai
 
   // Larai: pakre jaane pe fauran maut nahi — [fightDuration] tak larai, phir maut.
   // Is dauraan ek dafa (ad dekh kar) chhoot kar bhaag sakte hain.
@@ -1457,6 +1463,10 @@ class World {
       if (sitting && refugeDoneAt < 0) refugeDoneAt = refugeTime;
       return;
     }
+    if (level.home) {
+      _homeHunters(dt);
+      return;
+    }
     // Shikaari: daurte hue gaddhay ke oopar aa kar rukte hain, idhar udhar dekhte hain (hero neeche saans
     // roke), phir cheekh kar aagay — hero ke oopar se — bhaag jaate hain
     final stopAt = level.goalX + seatX + 6; // aagay wala theek hero ke oopar
@@ -1490,11 +1500,48 @@ class World {
     }
   }
 
+  /// Ghar: shikaari gaon ke kinare tak daurte aate hain — qabeele ke jawan neze utha kar khare ho jaate hain,
+  /// jang ki cheekh — shikaari ruk kar dekhte hain aur ulte paon bhaag jaate hain
+  void _homeHunters(double dt) {
+    final stopAt = level.goalX - 230;
+    switch (_refugeStage) {
+      case 0:
+        hunterDir = 1;
+        hunterMoving = hunterX < stopAt;
+        if (hunterMoving) {
+          hunterX = min(stopAt, hunterX + 135 * dt);
+        } else {
+          _refugeStage = 1;
+          _searchStart = refugeTime;
+          events.add(GameEvent.chaseStart); // qabeele ki jang ki cheekh
+        }
+      case 1:
+        hunterMoving = false;
+        hunterDir = 1;
+        if (refugeTime - _searchStart > 1.5) {
+          _refugeStage = 2;
+          passedTime = refugeTime;
+          events.add(GameEvent.shout); // shikaari ghabra kar
+        }
+      default:
+        hunterDir = -1;
+        hunterMoving = true;
+        hunterX -= 150 * dt;
+        if (refugeDoneAt < 0 && refugeTime - passedTime > 2.4) {
+          refugeDoneAt = refugeTime;
+        }
+    }
+  }
+
+  /// Ghar mein qabeele ke jawan khare ho gaye (shikaari saamne)
+  bool get tribeStands => level.home && _refugeStage >= 1;
+
   /// Hero gaddhay ke munh tak chalta hai, patton ke beech se andar gir jata hai, phir rengh kar
   /// andar ki taraf baith jata hai. Hideout na ho (trailer) to wahin zameen pe baith jata hai.
   void _hideHero(double dt) {
     final hole = level.hideout;
-    final entry = level.goalX + (hole == null ? seatX : holeX);
+    final entry =
+        level.goalX + (level.home ? homeX : (hole == null ? seatX : holeX));
     if (!_dropping && !sitting && pos.dx < entry) {
       facingRight = true;
       vx = 80;
@@ -1546,6 +1593,7 @@ class World {
 
   /// Hero aankhen band, saans roke — jab tak shikaari oopar hain
   bool get hiding =>
+      !level.home &&
       chaseActive &&
       state == PlayerState.won &&
       (passedTime < 0 || refugeTime - passedTime < 1.4);

@@ -508,3 +508,116 @@ Level homecoming() {
     rain: const Profile([(0, 0.6), (1500, 0.9), (3400, 1.0)]),
   );
 }
+
+/// 7 · Home — subah ka rangeen jungle: sunehri dhoop, phool, titliyan, saaf naala. Sab se mushkil daud —
+/// shikaari sab se tez aur qareeb — phir apna gaon, jahan qabeela khara ho kar shikaariyon ko bhaga deta hai.
+Level home() {
+  const a = Terrain([
+    Offset(-600, 400),
+    Offset(150, 400),
+    Offset(250, 400),
+    Offset(320, 392),
+    Offset(400, 376),
+    Offset(470, 370), // teela (oopar aari)
+    Offset(540, 382),
+    Offset(610, 396),
+    Offset(652, 400),
+  ]);
+  const b = Terrain([
+    Offset(740, 400),
+    Offset(780, 400), // checkpoint
+    Offset(880, 400), // kaante
+    Offset(930, 410),
+    Offset(965, 418), // naala
+    Offset(1000, 412),
+    Offset(1035, 400),
+    Offset(1100, 400),
+    Offset(1200, 400), // jhoolta lakkar
+    Offset(1250, 392),
+    Offset(1320, 380),
+    Offset(1378, 372),
+    Offset(1390, 330), // chattan — koodo
+    Offset(1460, 326),
+    Offset(1530, 330),
+    Offset(1552, 336),
+  ]);
+  const c = Terrain([
+    Offset(1640, 380),
+    Offset(1660, 382), // checkpoint
+    Offset(1700, 386),
+    Offset(1780, 398),
+    Offset(1850, 400),
+    Offset(1950, 400), // shikanja, aari
+    Offset(2000, 402),
+    Offset(2080, 400), // shaakh
+    Offset(2120, 404),
+    Offset(2140, 440),
+    Offset(2165, 470), // gehra talaab
+    Offset(2190, 440),
+    Offset(2212, 404),
+    Offset(2260, 400),
+    Offset(2380, 400), // kaante
+    Offset(2420, 396),
+    Offset(2462, 400),
+  ]);
+  const d = Terrain([
+    Offset(2550, 400),
+    Offset(2570, 400), // checkpoint
+    Offset(2620, 398),
+    Offset(2700, 400), // aari
+    Offset(2760, 404),
+    Offset(2840, 400), // shikanja
+    Offset(2900, 392), // jhoolta lakkar
+    Offset(2960, 400),
+    Offset(3002, 400),
+  ]);
+  double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
+  return Level(
+    mood: Mood.dawn,
+    home: true,
+    terrain: const [a, b, c, d],
+    pools: const [Pool(925, 1040, 404), Pool(2128, 2204, 408, deep: true)],
+    solids: const [
+      Rect.fromLTWH(
+        3000,
+        400,
+        1600,
+        200,
+      ), // apna gaon (aagay tak — kinara nazar na aaye)
+    ],
+    spikes: [
+      Rect.fromLTWH(820, y(844) - 14, 48, 16),
+      Rect.fromLTWH(2330, y(2354) - 14, 48, 16),
+    ],
+    traps: [
+      Rect.fromLTWH(1880, y(1897) - 10, 34, 10),
+      Rect.fromLTWH(2800, y(2817) - 10, 34, 10),
+    ],
+    saws: const [
+      Saw(500, 290, speed: 1.8),
+      Saw(1960, 320, speed: 2.0),
+      Saw(2660, 320, speed: 2.1),
+    ],
+    pendulums: const [
+      Pendulum(Offset(1150, 170), 175, speed: 1.8),
+      Pendulum(Offset(2900, 165), 175, speed: 2.0, phase: 1),
+    ],
+    branches: const [Branch(1500, 1420), Branch(2040, 1930)],
+    checkpoints: [
+      const Offset(100, 400),
+      Offset(780, y(780)),
+      Offset(1660, y(1660)),
+      Offset(2570, y(2570)),
+    ],
+    goalX: 3100,
+    // Sab se mushkil: shikaari sab se tez, sab se qareeb, sab se zyada neze
+    chase: const Chase(
+      startX: 200,
+      speed: 142,
+      maxBehind: 390,
+      throwEvery: 2.1,
+      aimEvery: 2,
+    ),
+    wind: const Profile([(0, 0.2), (3200, 0.3)]),
+  );
+}

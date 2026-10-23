@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'game/chapters.dart';
 import 'game/jungle.dart';
+import 'game/palette.dart';
+import 'game/world.dart';
 import 'game/sound.dart';
 import 'services/ads.dart';
 import 'ui/game_screen.dart';
@@ -54,6 +56,8 @@ class _ShadeHomeState extends State<ShadeHome> {
   _Phase phase =
       _Phase.trailer; // har dafa khulne pe pehle trailer (skip ho sakta hai)
   final jungle = Jungle(); // darakhton ki tasveerein ek dafa — trailer aur saare chapters mein
+  // Rangeen subah wale chapter ki apni tasveerein (pehli dafa khulne pe banti hain)
+  late final dawnJungle = Jungle(colors: Palette.dawn);
   Chapter chapter = chapters.first;
   final AdService ads = PlaceholderAds(); // asli ads aane pe yahan badalna
 
@@ -112,7 +116,7 @@ class _ShadeHomeState extends State<ShadeHome> {
         _Phase.play => GameScreen(
           key: ValueKey('play${chapter.number}'),
           level: chapter.level!(),
-          jungle: jungle,
+          jungle: chapter.level!().mood == Mood.dawn ? dawnJungle : jungle,
           sound: sound,
           onComplete: _completed,
           onExit: _toTitle,

@@ -5,8 +5,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-const _ink = Color(0xFF070707);
-final _fill = Paint()..color = _ink;
+import 'palette.dart';
+
+Color get _ink => palette.ink;
+Paint get _fill => Paint()..color = _ink;
 
 double _hash(int i, int salt) {
   final h = sin(i * 12.9898 + salt * 78.233) * 43758.5453;
@@ -197,13 +199,21 @@ void drawHut(
     );
   }
   final walls = Rect.fromLTWH(x - 38, ground - 46, 76, 46);
-  canvas.drawRect(walls, Paint()..color = const Color(0xFF141414));
+  // Rangeen subah mein mitti ki deewarein aur sunehri phoos; warna kaale saaye
+  final colorful = palette.colorful;
+  canvas.drawRect(
+    walls,
+    Paint()
+      ..color = colorful ? const Color(0xFF7A5232) : const Color(0xFF141414),
+  );
   // Darwaze ki jagah se andar ki aag ki roshni
   canvas.drawRect(
     Rect.fromLTWH(x - 9, ground - 30, 18, 30),
     Paint()
-      ..color = Colors.white.withValues(
-        alpha: burning
+      ..color = (colorful ? const Color(0xFF2A1A0E) : Colors.white).withValues(
+        alpha: colorful
+            ? 0.9
+            : burning
             ? 0.35 + 0.15 * sin(t * 11 + seed)
             : 0.22 + 0.04 * sin(t * 3 + seed),
       ),
@@ -225,7 +235,11 @@ void drawHut(
     roof.lineTo(x, ground - 98);
   }
   roof.close();
-  canvas.drawPath(roof, Paint()..color = const Color(0xFF141414));
+  canvas.drawPath(
+    roof,
+    Paint()
+      ..color = colorful ? const Color(0xFFB98A3E) : const Color(0xFF141414),
+  );
   if (!burning) return;
   drawFire(
     canvas,

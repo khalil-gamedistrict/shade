@@ -4,6 +4,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'palette.dart';
+
 enum Look {
   hero, // lambe khule baal, kaan mein gol baali, langot
   feathers, // pankhon wala taaj, neza
@@ -13,7 +15,8 @@ enum Look {
   woman, // lambe baal, ghutnon tak ghaghra
 }
 
-const _ink = Color(0xFF070707);
+Color get _ink =>
+    palette.ink; // kirdar ka saaya (rangeen chapter mein gehra bhoora)
 
 /// Bahar se tay kiya hua pose (maut ka manzar waghera): (ran/baazu ka angle, ghutne/kohni ka mor)
 class FigurePose {
@@ -22,7 +25,7 @@ class FigurePose {
   const FigurePose(this.legA, this.legB, this.armA, this.armB, {this.lean = 0});
 }
 
-final _fill = Paint()..color = _ink;
+Paint get _fill => Paint()..color = _ink;
 
 /// [foot]: paon ki jagah, [dir]: 1 = right ki taraf munh, [phase]: daud ka chakkar
 void drawFigure(

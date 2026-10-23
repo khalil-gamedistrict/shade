@@ -34,9 +34,23 @@ Kahani bina alfaaz ke dikhayi jaati hai (Limbo ki tarah): silhouettes, awaazein,
 | 3 | The River | Darya paar karna | Pattharon pe kood, tairti kashtiyan, paani mein gire to doob gaye |
 | 4 | The Storm | Toofan | Tez hawa, moosla dhaar baarish, bijli, hilte platform |
 | 5 | The Cliffs | Oonchi chattanen | Rassi ka pul, gehri khaiyan, saamne se tez hawa |
-| 6 | Homecoming | Shikaariyon se bach kar apne logon tak | Bhari baarish, aakhri mushkil hissa; jeet pe "The End" |
+| 6 | Homecoming | Shikaariyon se bach kar apne logon tak | Bhari baarish, teelay, keechar |
+| 7 | Home | Subah — apna gaon | **Rangeen** (baaqi sab kaale-safed): sunehri dhoop, hare patte, phool, titliyan, saaf naala. Sab se mushkil daud. Aakhir mein qabeela neze utha kar khara hota hai, shikaari laut jaate hain — *"Home."*, phir "The End" |
 
-Sab chapter bane hue hain. Har chapter mein shikaari peeche hain.
+Sab chapter bane hue hain. Har chapter mein shikaari peeche hain. Har chapter mein zameen ooncha-neecha hai
+(teelay, naale, gehre gadhe, chattanen).
+
+**Mushkil chapter ba chapter barhti hai:** shikaari tez, qareeb, zyada aur zyada nishane wale neze; khatre bhi
+zyada (Chapter 1 sab se aasaan, Chapter 7 sab se mushkil). Test is tarteeb ki hifazat karta hai.
+
+## Trailer (18 s + title)
+1. Gaon mein sukoon — *They lived in peace.*
+2. Andhere jungle mein jhuke, dabe paon aate shikaari — *But the forest was watching.*
+3. Hamla, sab bhaagte hain — *Then the hunters came.*
+4. Jalta gaon — *The village burned.*
+5. Darya ki taraf — *Run. Don't look back.*
+6. Toofan aur bijli — *Through the storm.*
+7. Zameen ke neeche chhupna, shikaari oopar — *Hide. Survive. Get home.*
 
 ## Maut
 Gayab nahi hota: jhatka → girna (jis taraf se waar hua) → zameen pe tarapna → saakit.

@@ -32,4 +32,5 @@ final chapters = <Chapter>[
   ),
   const Chapter(5, 'The Cliffs', cliffs),
   const Chapter(6, 'Homecoming', homecoming),
+  const Chapter(7, 'Home', home),
 ];

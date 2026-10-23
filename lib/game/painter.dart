@@ -10,6 +10,7 @@ import 'figures.dart';
 import 'grass.dart';
 import 'props.dart';
 import 'jungle.dart';
+import 'palette.dart';
 import 'weather.dart';
 import 'world.dart';
 
@@ -29,7 +30,7 @@ class WorldPainter extends CustomPainter {
   });
 
   static const viewHeight = 500.0; // itni world height screen pe fit hogi
-  static final _black = Paint()..color = const Color(0xFF070707);
+  static Paint get _black => Paint()..color = palette.ink;
 
   static double viewWidth(Size size) => size.width / (size.height / viewHeight);
   static double cameraX(World world, double viewW) =>
@@ -37,6 +38,7 @@ class WorldPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    palette = world.level.mood == Mood.dawn ? Palette.dawn : Palette.mono;
     final scale = size.height / viewHeight;
     final viewW = viewWidth(size);
     final camX = cameraX(world, viewW);
@@ -72,6 +74,7 @@ class WorldPainter extends CustomPainter {
       if (x < camX - 150 || x > camX + viewW + 150) continue;
       drawHut(canvas, x, _groundAt(x), t, world.windAt(x), i);
     }
+    if (level.home) _village(canvas, camX, viewW);
     final waterY = level.waterY;
     if (waterY != null) {
       for (final (l, r) in _gaps(camX - 20, camX + viewW + 20)) {
@@ -85,7 +88,7 @@ class WorldPainter extends CustomPainter {
         drawBridge(canvas, s, t, world.windAt(s.center.dx)); // rassi ka pul
         continue;
       }
-      canvas.drawRect(s, _black);
+      canvas.drawRect(s, Paint()..color = palette.ground);
       Grass.addTo(
         grass,
         s.top,
@@ -109,7 +112,7 @@ class WorldPainter extends CustomPainter {
         ..lineTo(b, tr.topAt(b)!)
         ..lineTo(b, tr.bottom)
         ..close();
-      canvas.drawPath(ground, _black);
+      canvas.drawPath(ground, Paint()..color = palette.ground);
       var from = tr.left;
       for (final p in [
         ...level.pools,
@@ -126,7 +129,8 @@ class WorldPainter extends CustomPainter {
         hole.left < camX + viewW + 60) {
       drawHideoutBack(canvas, hole, _groundAt(hole.center.dx), t);
     }
-    canvas.drawPath(grass, _black);
+    canvas.drawPath(grass, Paint()..color = palette.grass);
+    if (palette.colorful) _flowers(canvas, camX, viewW);
     for (final s in world.level.spikes) {
       _spikes(canvas, s);
     }
@@ -164,7 +168,7 @@ class WorldPainter extends CustomPainter {
       );
     }
     // Panah ho to wahi manzil ki nishani; warna purani roshni
-    if (world.level.hideout == null) {
+    if (world.level.hideout == null && !world.level.home) {
       _goalLight(canvas);
     }
     extra?.call(canvas);
@@ -177,6 +181,7 @@ class WorldPainter extends CustomPainter {
       viewW,
     ); // paani jismon ke saamne — paon andar doobe dikhen
     _hideoutFront(canvas);
+    if (palette.colorful) _butterflies(canvas, camX, viewW);
     // Shaakhen player ke baad — neeche dabi laash lakdi ke neeche dikhe
     for (var i = 0; i < world.level.branches.length; i++) {
       if (world.branchState[i] == 0) continue; // abhi oopar chhupa hai
@@ -249,12 +254,12 @@ class WorldPainter extends CustomPainter {
           ..shader = LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: const [Color(0xE0404346), Color(0xF6141516)],
+            colors: [palette.waterTop, palette.waterDeep],
           ).createShader(Rect.fromLTRB(p.left, p.surface, p.right, bottom)),
       );
       // Sath ki chamak: toot'ti hui patli lakeerein, aahista behti
       final shine = Paint()
-        ..color = const Color(0x88C9CDD1)
+        ..color = palette.waterShine
         ..strokeWidth = 1
         ..strokeCap = StrokeCap.round;
       for (var k = 0; k < (p.right - p.left) / 14; k++) {
@@ -287,6 +292,175 @@ class WorldPainter extends CustomPainter {
             ring,
           );
         }
+      }
+    }
+  }
+
+  static const _petals = [
+    Color(0xFFF06292),
+    Color(0xFFFFD54F),
+    Color(0xFFFFFFFF),
+    Color(0xFFB388FF),
+    Color(0xFFFF8A50),
+  ];
+
+  static double _h(int i, int salt) {
+    final v = sin(i * 12.9898 + salt * 78.233) * 43758.5453;
+    return v - v.floorToDouble();
+  }
+
+  /// Rangeen subah: ghaas mein chhote rang birange phool (paani aur khatron se door)
+  void _flowers(Canvas canvas, double camX, double viewW) {
+    final level = world.level;
+    final stem = Paint()
+      ..color = const Color(0xFF2E6B1F)
+      ..strokeWidth = 1;
+    for (var i = (camX / 9).floor(); i * 9 < camX + viewW; i++) {
+      if (_h(i, 120) > 0.22) continue;
+      final x = i * 9 + _h(i, 121) * 9;
+      if (level.poolAt(x) != null) continue;
+      final onGround =
+          level.terrainTop(x) != null ||
+          level.ground.any((s) => x > s.left && x < s.right && s.height > 10);
+      if (!onGround) continue;
+      if ([
+        ...level.spikes,
+        ...level.traps,
+      ].any((k) => x > k.left - 20 && x < k.right + 20)) {
+        continue;
+      }
+      final g = _groundAt(x);
+      final hgt = 4 + _h(i, 122) * 7;
+      final top = Offset(x + sin(world.time * 2 + i) * 0.8, g - hgt);
+      canvas.drawLine(Offset(x, g), top, stem);
+      final petal = Paint()..color = _petals[(_h(i, 123) * 5).floor()];
+      for (var k = 0; k < 4; k++) {
+        final a = k * pi / 2 + i;
+        canvas.drawCircle(top + Offset(cos(a), sin(a)) * 1.6, 1.4, petal);
+      }
+      canvas.drawCircle(top, 1, Paint()..color = const Color(0xFFFFC107));
+    }
+  }
+
+  /// Rangeen subah: idhar udhar urti titliyan
+  void _butterflies(Canvas canvas, double camX, double viewW) {
+    final t = world.time;
+    for (var k = 0; k < 7; k++) {
+      final x = camX + (k * 211 + t * (22 + k * 3)) % (viewW + 80) - 40;
+      final y = 290 + sin(t * 1.3 + k) * 35 + k * 9 + sin(t * 3.1 + k * 2) * 6;
+      final flap = sin(t * 15 + k).abs();
+      final wing = Paint()..color = _petals[k % 5].withValues(alpha: 0.95);
+      for (final side in [-1.0, 1.0]) {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(x + side * 2.6 * flap, y),
+            width: 4.6 * flap + 0.8,
+            height: 5.5,
+          ),
+          wing,
+        );
+      }
+      canvas.drawLine(
+        Offset(x, y - 2.5),
+        Offset(x, y + 2.5),
+        Paint()
+          ..color = palette.ink
+          ..strokeWidth = 1,
+      );
+    }
+  }
+
+  /// Apna gaon (aakhri chapter): sabut jhonpriyan, alaao, ghar wale — aur do jawan neze liye, jo shikaari
+  /// aate hi neze utha kar khare ho jaate hain
+  void _village(Canvas canvas, double camX, double viewW) {
+    final g = world.level.goalX;
+    if (g + 600 < camX || g - 100 > camX + viewW) return;
+    final t = world.time, wind = world.windAt(g);
+    final ground = _groundAt(g + 100);
+    drawHut(canvas, g + 70, ground, t, wind, 1, burning: false);
+    drawHut(canvas, g + 430, ground, t, wind, 2, burning: false);
+    final log = Paint()
+      ..color = palette.ink
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    const fx = 245.0;
+    canvas.drawLine(
+      Offset(g + fx - 16, ground),
+      Offset(g + fx + 12, ground - 7),
+      log,
+    );
+    canvas.drawLine(
+      Offset(g + fx + 16, ground),
+      Offset(g + fx - 12, ground - 7),
+      log,
+    );
+    drawFire(
+      canvas,
+      Rect.fromLTWH(g + fx - 14, ground - 14, 28, 8),
+      t,
+      size: 0.85,
+    );
+    // Ghar wale: aurten aur bachche alaao ke paas, hero ki taraf dekhte
+    for (final (dx, look, sc) in [
+      (285.0, Look.woman, 1.0),
+      (312.0, Look.villager, 0.6),
+      (340.0, Look.woman, 1.0),
+      (365.0, Look.villager, 0.62),
+    ]) {
+      drawFigure(
+        canvas,
+        look: look,
+        foot: Offset(g + dx, ground),
+        dir: -1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: t + dx,
+        wind: wind,
+        scale: sc,
+      );
+    }
+    // Jawan: neze liye; shikaari aaye to neze aagay, baazu oopar (jang ki cheekh)
+    final stand = world.tribeStands;
+    final spear = Paint()
+      ..color = palette.ink
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
+    for (final dx in [18.0, 52.0]) {
+      final foot = Offset(g + dx, ground);
+      drawFigure(
+        canvas,
+        look: Look.villager,
+        foot: foot,
+        dir: -1,
+        phase: 0,
+        moving: false,
+        inAir: false,
+        time: t + dx,
+        wind: wind,
+        scale: 1.06,
+        pose: stand
+            ? const FigurePose(
+                (0.45, -0.2),
+                (-0.45, 0),
+                (1.6, 0.1),
+                (2.7, 0.3),
+                lean: 0.18,
+              )
+            : null,
+      );
+      if (stand) {
+        canvas.drawLine(
+          foot + const Offset(14, -30),
+          foot + const Offset(-34, -40),
+          spear,
+        );
+      } else {
+        canvas.drawLine(
+          foot + const Offset(-8, 0),
+          foot + const Offset(-8, -62),
+          spear,
+        );
       }
     }
   }
@@ -333,16 +507,8 @@ class WorldPainter extends CustomPainter {
 
   void _sky(Canvas canvas, Size size) {
     final r = weather.rain;
-    final top = Color.lerp(
-      const Color(0xFFB8B8B8),
-      const Color(0xFF8C8E90),
-      r,
-    )!;
-    final bottom = Color.lerp(
-      const Color(0xFF6E6E6E),
-      const Color(0xFF55585A),
-      r,
-    )!;
+    final top = Color.lerp(palette.skyTop, const Color(0xFF8C8E90), r)!;
+    final bottom = Color.lerp(palette.skyBottom, const Color(0xFF55585A), r)!;
     final rect = Offset.zero & size;
     canvas.drawRect(
       rect,
@@ -353,6 +519,25 @@ class WorldPainter extends CustomPainter {
           colors: [top, bottom],
         ).createShader(rect),
     );
+    if (palette.colorful) {
+      // Subah ka sooraj: oopar daayen, naram sunehri chamak
+      final sun = Offset(size.width * 0.8, size.height * 0.16);
+      final r = size.height * 0.42;
+      canvas.drawCircle(
+        sun,
+        r,
+        Paint()
+          ..shader = const RadialGradient(
+            colors: [Color(0xCCFFF6D0), Color(0x55FFE9A8), Color(0x00FFE9A8)],
+            stops: [0, 0.25, 1],
+          ).createShader(Rect.fromCircle(center: sun, radius: r)),
+      );
+      canvas.drawCircle(
+        sun,
+        size.height * 0.05,
+        Paint()..color = const Color(0xFFFFF8E1),
+      );
+    }
     if (world.level.mood == Mood.fire) {
       final flicker = 0.85 + 0.15 * sin(world.time * 9) * sin(world.time * 5.3);
       canvas.drawRect(
@@ -388,8 +573,8 @@ class WorldPainter extends CustomPainter {
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
           colors: [
-            Colors.white.withValues(alpha: amount + weather.rain * 0.08),
-            Colors.white.withValues(alpha: amount * 0.3),
+            palette.haze.withValues(alpha: amount + weather.rain * 0.08),
+            palette.haze.withValues(alpha: amount * 0.3),
           ],
         ).createShader(rect),
     );
@@ -459,7 +644,7 @@ class WorldPainter extends CustomPainter {
   /// Hilta platform: lakri ka takhta, oopar se do rassiyon pe latka hua
   void _mover(Canvas canvas, Rect r) {
     final rope = Paint()
-      ..color = const Color(0xFF070707)
+      ..color = palette.ink
       ..strokeWidth = 1.5;
     canvas.drawLine(Offset(r.left + 8, 0), Offset(r.left + 8, r.top), rope);
     canvas.drawLine(Offset(r.right - 8, 0), Offset(r.right - 8, r.top), rope);
@@ -505,7 +690,7 @@ class WorldPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.4
-          ..color = const Color(0xFF070707),
+          ..color = palette.ink,
       );
       return;
     }
@@ -542,14 +727,14 @@ class WorldPainter extends CustomPainter {
       Offset(p.pivot.dx, 0),
       p.pivot,
       Paint()
-        ..color = const Color(0xFF070707)
+        ..color = palette.ink
         ..strokeWidth = 2,
     );
     canvas.drawLine(
       p.pivot,
       bob,
       Paint()
-        ..color = const Color(0xFF070707)
+        ..color = palette.ink
         ..strokeWidth = 2.5,
     );
     // Lakkar: rassi ke seedh mein mota gol tukra, kuch ubhri ganthein
@@ -622,7 +807,7 @@ class WorldPainter extends CustomPainter {
       Offset(c.dx, 0),
       c,
       Paint()
-        ..color = const Color(0xFF070707)
+        ..color = palette.ink
         ..strokeWidth = 3,
     );
     final path = Path();
@@ -1064,7 +1249,7 @@ class WorldPainter extends CustomPainter {
   /// Hawa mein ya zameen mein gare neze
   void _spears(Canvas canvas) {
     final shaft = Paint()
-      ..color = const Color(0xFF070707)
+      ..color = palette.ink
       ..strokeWidth = 1.7
       ..strokeCap = StrokeCap.round;
     for (final sp in world.spears) {
@@ -1088,10 +1273,10 @@ class WorldPainter extends CustomPainter {
     canvas.drawRect(
       rect,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.center,
-          colors: [Color(0x55FFFFFF), Color(0x00FFFFFF)],
+          colors: [palette.fog, palette.fog.withValues(alpha: 0)],
         ).createShader(rect),
     );
     // Baarish mein hawa mein paani ki dhund
@@ -1106,10 +1291,10 @@ class WorldPainter extends CustomPainter {
     canvas.drawRect(
       rect,
       Paint()
-        ..shader = const RadialGradient(
+        ..shader = RadialGradient(
           radius: 0.9,
-          colors: [Color(0x00000000), Color(0xCC000000)],
-          stops: [0.55, 1],
+          colors: [palette.vignette.withValues(alpha: 0), palette.vignette],
+          stops: const [0.55, 1],
         ).createShader(rect),
     );
   }

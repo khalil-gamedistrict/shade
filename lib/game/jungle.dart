@@ -9,6 +9,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'palette.dart';
 import 'plants.dart';
 import 'trees.dart';
 import 'world.dart';
@@ -124,17 +125,21 @@ class SpriteCache {
 enum _Plant { fern, bush, broadleaf }
 
 class Jungle {
+  /// Kis rang mein (kaala-safed ya rangeen subah) — har rang ki apni tasveerein
+  final Palette colors;
+  Jungle({this.colors = Palette.mono});
+
   double dpr = 1; // screen ki pixel density — tasveerein isi hisaab se tez (sharp) banti hain
   final cache = SpriteCache();
   double _lastScale = 0;
 
   // Darakht: jitne door, utne halke aur dhundle (patte shaakhon se bhi halke)
-  final far = TreeLayer(
+  late final far = TreeLayer(
     parallax: 0.2,
     spacing: 48,
     seed: 11,
-    color: const Color(0x28000000),
-    leafColor: const Color(0x26000000),
+    color: colors.farTrunk,
+    leafColor: colors.farLeaf,
     leafSize: 1.0,
     leafDensity: 2.4,
     minHeight: 540,
@@ -144,12 +149,12 @@ class Jungle {
     leafiness: 0.8,
     variants: 8,
   );
-  final mid = TreeLayer(
+  late final mid = TreeLayer(
     parallax: 0.5,
     spacing: 115,
     seed: 22,
-    color: const Color(0xFF5E6062),
-    leafColor: const Color(0xFF656769),
+    color: colors.midTrunk,
+    leafColor: colors.midLeaf,
     leafSize: 1.05,
     leafDensity: 2.2,
     minHeight: 500,
@@ -158,24 +163,24 @@ class Jungle {
     leafiness: 0.9,
     variants: 8,
   );
-  final near = TreeLayer(
+  late final near = TreeLayer(
     parallax: 1,
     spacing: 250,
     seed: 33,
-    color: const Color(0xFF131313),
-    leafColor: const Color(0xFF0E0E0E),
+    color: colors.nearTrunk,
+    leafColor: colors.nearLeaf,
     minHeight: 500,
     maxHeight: 660,
     thickness: 0.58,
     leafiness: 0.95,
     variants: 10,
   );
-  final front = TreeLayer(
+  late final front = TreeLayer(
     parallax: 1.4,
     spacing: 1300,
     seed: 44,
-    color: const Color(0xFF030303),
-    leafColor: const Color(0xF5050505),
+    color: colors.frontTrunk,
+    leafColor: colors.frontLeaf,
     minHeight: 750,
     maxHeight: 900,
     thickness: 0.9,
@@ -292,9 +297,7 @@ class Jungle {
   Sprite _vine(int variant, double res) => cache.get(
     'vine:$variant',
     res,
-    () => [
-      (vine(variant * 31 + 5, 200 + variant * 25.0), const Color(0xE8101010)),
-    ],
+    () => [(vine(variant * 31 + 5, 200 + variant * 25.0), colors.vine)],
   );
 
   /// Screen ka size badle to tasveerein naye size pe; pehli dafa sab ek saath bana lo,
@@ -351,11 +354,14 @@ class Jungle {
     }
   }
 
-  static const _undergrowthFar = Color(0xFF7A7C7D);
-  static const _undergrowthMid = Color(0xFF4C4E4F);
+  // Subah ki dhoop sunehri, warna safed
+  Color get _ray =>
+      colors.colorful ? const Color(0xFFFFE7A6) : const Color(0xFFFFFFFF);
+  Color get _undergrowthFar => colors.undergrowthFar;
+  Color get _undergrowthMid => colors.undergrowthMid;
   // Game ki zameen ke paude kaale se thore halke, taake kaala player un ke saamne dikhe
-  static const _groundColor = Color(0xFF2A2A2A);
-  static const _frontColor = Color(0xFF040404);
+  Color get _groundColor => colors.plants;
+  Color get _frontColor => colors.frontPlants;
 
   // ---------------------------------------------------------------- Peeche wali layers
 
@@ -448,8 +454,8 @@ class Jungle {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.white.withValues(alpha: alpha),
-              Colors.white.withValues(alpha: 0),
+              _ray.withValues(alpha: alpha * (colors.colorful ? 1.6 : 1)),
+              _ray.withValues(alpha: 0),
             ],
           ).createShader(Rect.fromLTWH(x - 100, -10, 400, 490)),
       );

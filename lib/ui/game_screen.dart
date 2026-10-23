@@ -308,8 +308,8 @@ class _GameScreenState extends State<GameScreen>
                       (1 -
                           ((_afterRefuge - _fadeAt + 0.4).clamp(0.0, 0.6) /
                               0.6)),
-                  child: const Text(
-                    'Safe — for now.',
+                  child: Text(
+                    world.level.home ? 'Home.' : 'Safe — for now.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,

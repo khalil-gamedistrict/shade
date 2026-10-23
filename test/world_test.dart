@@ -263,7 +263,7 @@ void main() {
       );
       expectJumpable(level);
     }
-    expect(chapters.length, 6);
+    expect(chapters.length, 7);
   });
 
   group('jungle ki zameen', () {
@@ -507,6 +507,34 @@ void main() {
     }
   });
 
+  test('aakhri chapter rangeen: ghar pahunch kar qabeela khara hota hai, shikaari laut jaate hain', () {
+    final level = chapters.last.level!();
+    expect(level.mood, Mood.dawn);
+    expect(level.home, isTrue);
+    expect(level.hideout, isNull);
+    final w = World(level)
+      ..pos = Offset(level.goalX - 20, 400)
+      ..chaseActive = true
+      ..hunterX = level.goalX - 600;
+    final events = <GameEvent>[];
+    var closest = double.negativeInfinity;
+    for (var k = 0; k < 15 * 60 && !w.refugeDone; k++) {
+      w.update(1 / 60, Input()..right = w.state == PlayerState.alive);
+      events.addAll(w.events);
+      w.events.clear();
+      closest = max(closest, w.hunters.first.x);
+    }
+    expect(w.state, PlayerState.won);
+    expect(w.sitting, isTrue);
+    expect(w.pos.dx, closeTo(level.goalX + World.homeX, 1));
+    expect(w.tribeStands, isTrue);
+    expect(events, contains(GameEvent.chaseStart)); // qabeele ki cheekh
+    expect(closest, lessThan(level.goalX - 150)); // gaon mein nahi ghuse
+    w.update(2, Input());
+    expect(w.hunters.first.x, lessThan(level.goalX - 400)); // laut gaye
+    expect(w.hiding, isFalse);
+  });
+
   group('dhaal', () {
     World withShield() {
       final w = World(
@@ -715,6 +743,7 @@ void main() {
         'The Storm',
         'The Cliffs',
         'Homecoming',
+        'Home',
       ]);
     });
   });
@@ -936,7 +965,7 @@ void main() {
     test(
       'har chapter ke aakhir mein zameen ke neeche chhupne ka gaddha hai',
       () {
-        for (final c in chapters) {
+        for (final c in chapters.where((c) => !c.level!().home)) {
           final level = c.level!();
           expect(level.hideout, isNotNull, reason: c.title);
           // Goal ke baad itni zameen ke shikaari aagay daur kar nazar se ojhal ho jayen
@@ -1004,7 +1033,7 @@ void main() {
     });
 
     test('har chapter mein shikaari gaddhay ke oopar se guzar jaate hain', () {
-      for (final c in chapters) {
+      for (final c in chapters.where((c) => !c.level!().home)) {
         final level = c.level!();
         final hole = level.hideout!;
         final w = World(level)
