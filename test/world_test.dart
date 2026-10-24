@@ -263,7 +263,7 @@ void main() {
       );
       expectJumpable(level);
     }
-    expect(chapters.length, 7);
+    expect(chapters.length, 20);
   });
 
   group('jungle ki zameen', () {
@@ -289,6 +289,7 @@ void main() {
       terrain: l.terrain,
       pools: l.pools,
       wind: l.wind,
+      logs: l.logs,
     );
 
     test(
@@ -412,6 +413,36 @@ void main() {
       }
     });
 
+    test(
+      'gira darakht kisi gaddhay ke itna qareeb nahi ke uski jhukne ki '
+      'zone us gaddhay ki jump ko rok de',
+      () {
+        for (final c in chapters) {
+          final level = c.level!();
+          final segs =
+              level.terrain
+                  .map((t) => (t.points.first.dx, t.points.last.dx))
+                  .toList()
+                ..sort((a, b) => a.$1.compareTo(b.$1));
+          for (var i = 0; i + 1 < segs.length; i++) {
+            final gapStart = segs[i].$2, gapEnd = segs[i + 1].$1;
+            if (gapEnd <= gapStart + 1) continue;
+            for (final log in level.logs) {
+              final conflict =
+                  gapStart - 34 < log.right + 20 && gapEnd > log.left - 40;
+              expect(
+                conflict,
+                isFalse,
+                reason:
+                    '${c.title}: log ${log.left}-${log.right} vs gaddha '
+                    '$gapStart-$gapEnd',
+              );
+            }
+          }
+        }
+      },
+    );
+
     test('Chapter 1 mein shikaari bhi poora raasta paar karte hain', () {
       final level = noTiming(chapters.first.level!());
       final w =
@@ -481,7 +512,7 @@ void main() {
     },
   );
 
-  test('mushkil chapter ba chapter barhti hai (shikaari aur khatre)', () {
+  test('mushkil 5 set mein barhti hai (har set 2 chapter, agla set mushkil-tar)', () {
     double danger(Level l) {
       final n =
           l.spikes.length +
@@ -495,20 +526,35 @@ void main() {
     }
 
     final levels = [for (final c in chapters) c.level!()];
-    for (var i = 1; i < levels.length; i++) {
-      final a = levels[i - 1], b = levels[i];
-      final why = 'chapter ${i + 1}';
-      expect(danger(b), greaterThan(danger(a)), reason: '$why khatre');
-      expect(b.chase!.speed, greaterThan(a.chase!.speed), reason: why);
-      expect(b.chase!.throwEvery, lessThan(a.chase!.throwEvery), reason: why);
-      expect(b.chase!.maxBehind, lessThan(a.chase!.maxBehind), reason: why);
-      expect(b.chase!.aimEvery, lessThanOrEqualTo(a.chase!.aimEvery));
-      expect(b.chase!.speed, lessThan(World.speed), reason: 'bhaag sakte hon');
+    expect(levels.length % 2, 0, reason: 'sets do-do chapter ke hain');
+
+    // Har set ke andar dono chapter taqreeban ek jaisi tier ke shikaari (speed/maxBehind
+    // mein zyada farq nahi) — lekin set ka aiwasat (average) khatra aur raftaar har set
+    // mein pichle set se saaf zyada hona chahiye.
+    double? prevSpeed, prevDanger;
+    for (var i = 0; i < levels.length; i += 2) {
+      final x = levels[i], y = levels[i + 1];
+      final set = 'set ${i ~/ 2 + 1}';
+      expect(y.chase!.speed, closeTo(x.chase!.speed, 6), reason: set);
+      expect(y.chase!.maxBehind, closeTo(x.chase!.maxBehind, 40), reason: set);
+      expect(x.chase!.speed, lessThan(World.speed), reason: 'bhaag sakte hon');
+      expect(y.chase!.speed, lessThan(World.speed), reason: 'bhaag sakte hon');
+
+      final avgSpeed = (x.chase!.speed + y.chase!.speed) / 2;
+      final avgDanger = (danger(x) + danger(y)) / 2;
+      if (prevSpeed != null) {
+        expect(avgSpeed, greaterThan(prevSpeed), reason: '$set raftaar');
+        expect(avgDanger, greaterThan(prevDanger!), reason: '$set khatre');
+      }
+      prevSpeed = avgSpeed;
+      prevDanger = avgDanger;
     }
   });
 
-  test('aakhri chapter rangeen: ghar pahunch kar qabeela khara hota hai, shikaari laut jaate hain', () {
-    final level = chapters.last.level!();
+  test(
+    'chapter "Home" (shelved): rangeen, ghar pahunch kar qabeela khara hota hai, shikaari laut jaate hain',
+    () {
+    final level = home();
     expect(level.mood, Mood.dawn);
     expect(level.home, isTrue);
     expect(level.hideout, isNull);
@@ -661,7 +707,8 @@ void main() {
           shields: [Offset(200, 400)],
         ),
       );
-      w.update(1.2, Input()..right = true); // daurte daurte utha li
+      w.update(1.2, Input()..right = true); // daurte daurte paas pahunche
+      w.claimShield(); // ad poora dekh liya (test mein seedha claim)
       return w;
     }
 
@@ -672,11 +719,51 @@ void main() {
       }
     }
 
-    test('raaste se daurte daurte uthti hai', () {
+    test('raaste mein paas pahunchte hain, ad dekhne ke baad milti hai', () {
       final w = withShield();
       expect(w.shield, World.shieldMax);
       expect(w.events, contains(GameEvent.shieldPickup));
       expect(w.pos.dx, greaterThan(250)); // ruka nahi
+    });
+
+    test('muft nahi milti — paas pahunch kar bhi ad ke baghair shield 0 rehti hai', () {
+      final w = World(
+        const Level(
+          solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+          spikes: [],
+          saws: [],
+          checkpoints: [Offset(100, 400)],
+          goalX: 2900,
+          shields: [Offset(200, 400)],
+        ),
+      );
+      w.update(1.2, Input()..right = true); // paas pahunch gaya
+      expect(w.nearShield, 0);
+      expect(w.shield, 0); // ad dekhe baghair nahi milti
+    });
+
+    test('ad dekhte waqt poora khel (shikaari samet) ruka rehta hai', () {
+      final w = World(
+        const Level(
+          solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+          spikes: [],
+          saws: [],
+          checkpoints: [Offset(100, 400)],
+          goalX: 2900,
+          shields: [Offset(200, 400)],
+          chase: Chase(startX: 100),
+        ),
+      )..chaseActive = true;
+      w.update(1.2, Input()..right = true); // paas pahunch gaya
+      w.adPaused = true;
+      final pos = w.pos, hunterX = w.hunterX, time = w.time;
+      w.update(2, Input()..right = true);
+      expect(w.pos, pos);
+      expect(w.hunterX, hunterX);
+      expect(w.time, time);
+      w.adPaused = false;
+      w.claimShield();
+      expect(w.shield, World.shieldMax);
     });
 
     test(
@@ -856,8 +943,21 @@ void main() {
         'The River',
         'The Storm',
         'The Cliffs',
+        'The Thicket',
+        'The Swamp',
+        'The Ravine',
+        'The Flood',
+        'The Hollow',
+        'The Web',
+        'The Ruins',
+        'The Crushers',
+        'The Undertow',
+        'The Spire',
+        'The Hunting Ground',
+        'The Last Light',
+        'The Narrow Path',
+        'The Deep',
         'Homecoming',
-        'Home',
       ]);
     });
   });

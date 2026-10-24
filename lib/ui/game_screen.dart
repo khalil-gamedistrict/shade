@@ -45,6 +45,7 @@ class _GameScreenState extends State<GameScreen>
   Sound? get sound => widget.sound;
   bool _leaving = false;
   bool _adShowing = false;
+  bool _shieldNear = false;
   Jungle get jungle => widget.jungle;
   final weather = Weather();
 
@@ -113,6 +114,9 @@ class _GameScreenState extends State<GameScreen>
     if (world.state != shownState) {
       setState(() => shownState = world.state);
     }
+    if ((world.nearShield != null) != _shieldNear) {
+      setState(() => _shieldNear = world.nearShield != null);
+    }
     // Panah ka manzar khatam: line dikha kar fade, phir agla chapter
     if (_afterRefuge > _fadeAt + 1.6 && !_leaving) {
       _leaving = true;
@@ -143,6 +147,7 @@ class _GameScreenState extends State<GameScreen>
       input.down = down; // jhukna
     } else if (key == LogicalKeyboardKey.keyE && down) {
       _breakFree();
+      _claimShield();
     } else if (key == LogicalKeyboardKey.escape && !down) {
       widget.onExit();
     } else {
@@ -168,11 +173,73 @@ class _GameScreenState extends State<GameScreen>
     setState(() {});
   }
 
+  /// Raaste mein pari dhaal ke paas khare ho: ad dekho to milti hai, muft nahi
+  Future<void> _claimShield() async {
+    final i = world.nearShield;
+    if (i == null || _adShowing) return;
+    world.adPaused = true; // shikaari bhi ruk jayen, ad ke dauraan pakre na jayen
+    setState(() => _adShowing = true);
+    final rewarded = await widget.ads.showRewarded(context);
+    if (!mounted) return;
+    _adShowing = false;
+    world.adPaused = false;
+    if (rewarded) world.claimShield();
+    setState(() {});
+  }
+
   @override
   void dispose() {
     ticker.dispose();
     HardwareKeyboard.instance.removeHandler(_onKey);
     super.dispose();
+  }
+
+  Widget _shieldButton() {
+    return GestureDetector(
+      onTap: _claimShield,
+      child: Container(
+        width: 230,
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
+        decoration: BoxDecoration(
+          color: const Color(0xDD111111),
+          border: Border.all(color: Colors.white54),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'TAKE THE SHIELD',
+              style: TextStyle(
+                fontSize: 16,
+                letterSpacing: 3,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.play_circle_outline,
+                  size: 14,
+                  color: Colors.white60,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'Watch an ad  ·  E',
+                  style: TextStyle(
+                    fontSize: 12,
+                    letterSpacing: 1.5,
+                    color: Colors.white60,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _breakFreeButton() {
@@ -308,6 +375,15 @@ class _GameScreenState extends State<GameScreen>
               right: 0,
               bottom: 28,
               child: Center(child: _breakFreeButton()),
+            ),
+          if (world.state == PlayerState.alive &&
+              world.nearShield != null &&
+              !_adShowing)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 28,
+              child: Center(child: _shieldButton()),
             ),
           if (shownState == PlayerState.won)
             Positioned(

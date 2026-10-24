@@ -623,10 +623,12 @@ class World {
   double deadTimer = 0;
   int checkpoint = 0;
 
-  // Dhaal: raaste mein pari milti hai, daurte daurte utha kar peeth pe. [shieldMax] neze rokti hai, phir toot'ti hai.
+  // Dhaal: raaste mein milti hai, lekin muft nahi — ad dekho to milti hai. [shieldMax] neze rokti hai, phir toot'ti hai.
   static const shieldMax = 3;
   int shield = 0; // kitne aur neze rok sakti hai (0 = dhaal nahi)
   final Set<int> shieldsTaken = {};
+  int? nearShield; // qareeb khari dhaal ka index jo abhi li nahi gayi (ad dikhao to milegi)
+  bool adPaused = false; // ad chal raha ho to poora khel ruka rahe (shikaari bhi)
   double pickupTime = -10, shieldHitTime = -10, shieldBreakTime = -10;
   int deaths = 0;
   PlayerState state = PlayerState.alive;
@@ -872,6 +874,7 @@ class World {
   }
 
   void _step(double dt, Input input) {
+    if (adPaused) return; // dhaal ka ad chal raha hai — sab kuch (shikaari bhi) ruka
     time += dt;
     if (state == PlayerState.won) {
       _updateRefuge(dt);
@@ -989,14 +992,22 @@ class World {
       events.add(wading ? GameEvent.wade : GameEvent.step);
     }
 
-    // Raaste mein pari dhaal: paas se guzro to daurte daurte utha lo
-    for (var i = 0; i < level.shields.length; i++) {
-      if (shieldsTaken.contains(i)) continue;
-      if ((level.shields[i] - pos).distance < 24) {
-        shieldsTaken.add(i);
-        shield = shieldMax;
-        pickupTime = time;
-        events.add(GameEvent.shieldPickup);
+    // Raaste mein pari dhaal: paas aa kar ruko — ad dekho to milti hai (muft nahi).
+    // Qareeb aane pe "nearShield" chipak jata hai (40px mein dakhil ho, 150px tak door
+    // jaane tak nahi chhootta) — taake button tap karte waqt thoda chalne se gayab na ho.
+    if (nearShield != null) {
+      if (shieldsTaken.contains(nearShield!) ||
+          (level.shields[nearShield!] - pos).distance > 150) {
+        nearShield = null;
+      }
+    }
+    if (nearShield == null) {
+      for (var i = 0; i < level.shields.length; i++) {
+        if (shieldsTaken.contains(i)) continue;
+        if ((level.shields[i] - pos).distance < 40) {
+          nearShield = i;
+          break;
+        }
       }
     }
 
@@ -1676,6 +1687,18 @@ class World {
       spearAngle = 0;
       _die(DeathKind.caught);
     }
+  }
+
+  /// Ad poora dekhne ke badle qareeb pari dhaal mil jaati hai
+  bool claimShield() {
+    final i = nearShield;
+    if (i == null || shieldsTaken.contains(i)) return false;
+    shieldsTaken.add(i);
+    shield = shieldMax;
+    pickupTime = time;
+    nearShield = null;
+    events.add(GameEvent.shieldPickup);
+    return true;
   }
 
   /// Larai ke dauraan ek dafa (ad ke badle): hero dhakka de kar chhoot jata hai, shikaari gir jaate hain
