@@ -6,7 +6,10 @@ plugins {
 
 android {
     namespace = "com.khalil.shade"
-    compileSdk = flutter.compileSdkVersion
+    // AppLovin MAX ki androidx.lifecycle/savedstate dependencies ko compile karne ke liye
+    // kam se kam 34 chahiye (Google ki recommendation 36) — flutter ka default kabhi kam ho
+    // sakta hai, is liye khud maxOf se barha dete hain.
+    compileSdk = maxOf(36, flutter.compileSdkVersion)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
