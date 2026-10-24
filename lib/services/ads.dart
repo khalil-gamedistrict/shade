@@ -7,6 +7,9 @@ import 'package:flutter/material.dart';
 abstract class AdService {
   /// Rewarded ad dikhao. Poora dekha to true (inaam milega), beech mein band kiya to false.
   Future<bool> showRewarded(BuildContext context);
+
+  /// Chapter khatam hone pe interstitial — koi inaam nahi, bas dikha kar aagay barh jao.
+  Future<void> showInterstitial(BuildContext context);
 }
 
 /// Asli ad ki jagah: 3 second ka parda "Ad plays here", phir inaam
@@ -21,10 +24,21 @@ class PlaceholderAds implements AdService {
     );
     return result ?? false;
   }
+
+  @override
+  Future<void> showInterstitial(BuildContext context) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black,
+      pageBuilder: (_, _, _) => const _FakeAd(reward: false),
+    );
+  }
 }
 
 class _FakeAd extends StatefulWidget {
-  const _FakeAd();
+  final bool reward; // false = interstitial (koi inaam nahi, bas dikha kar band)
+  const _FakeAd({this.reward = true});
 
   @override
   State<_FakeAd> createState() => _FakeAdState();
@@ -87,19 +101,20 @@ class _FakeAdState extends State<_FakeAd> {
             top: 16,
             right: 20,
             child: Text(
-              'Reward in $left',
+              widget.reward ? 'Reward in $left' : 'Closing in $left',
               style: const TextStyle(fontSize: 14, color: Colors.white54),
             ),
           ),
-          Positioned(
-            top: 8,
-            left: 8,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white38),
-              onPressed: () => Navigator.of(context)
-                  .pop(false), // beech mein band = koi inaam nahi
+          if (widget.reward)
+            Positioned(
+              top: 8,
+              left: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white38),
+                onPressed: () => Navigator.of(context)
+                    .pop(false), // beech mein band = koi inaam nahi
+              ),
             ),
-          ),
         ],
       ),
     );

@@ -81,8 +81,10 @@ class _ShadeHomeState extends State<ShadeHome> {
     phase = c.ready ? _Phase.card : _Phase.soon;
   });
 
-  void _completed() {
+  Future<void> _completed() async {
     progress.markDone(chapter.number);
+    await ads.showInterstitial(context); // chapter khatam — ad, phir aagay
+    if (!mounted) return;
     final i = chapters.indexOf(chapter);
     if (i + 1 < chapters.length) {
       _open(chapters[i + 1]);

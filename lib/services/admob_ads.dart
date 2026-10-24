@@ -10,10 +10,15 @@ import 'ads.dart';
 class AdMobAds implements AdService {
   RewardedAd? _ready;
   bool _loading = false;
+  InterstitialAd? _interReady;
+  bool _interLoading = false;
 
   /// App shuru hote hi: SDK chalu karo aur pehla ad pehle se mangwa lo (dabate hi foran chale)
   AdMobAds() {
-    MobileAds.instance.initialize().then((_) => _load());
+    MobileAds.instance.initialize().then((_) {
+      _load();
+      _loadInterstitial();
+    });
   }
 
   Future<RewardedAd?> _load() {
@@ -69,6 +74,59 @@ class AdMobAds implements AdService {
       },
     );
     await ad.show(onUserEarnedReward: (_, _) => earned = true);
+    return result.future;
+  }
+
+  Future<InterstitialAd?> _loadInterstitial() {
+    if (_interReady != null) return Future.value(_interReady);
+    final done = Completer<InterstitialAd?>();
+    if (_interLoading) {
+      Timer(const Duration(seconds: 5), () => done.complete(_interReady));
+      return done.future;
+    }
+    _interLoading = true;
+    InterstitialAd.load(
+      adUnitId: admobInterstitialAndroid,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interLoading = false;
+          _interReady = ad;
+          if (!done.isCompleted) done.complete(ad);
+        },
+        onAdFailedToLoad: (error) {
+          _interLoading = false;
+          debugPrint('AdMob interstitial load failed: $error');
+          if (!done.isCompleted) done.complete(null);
+        },
+      ),
+    );
+    return done.future.timeout(
+      const Duration(seconds: 8),
+      onTimeout: () => null,
+    );
+  }
+
+  @override
+  Future<void> showInterstitial(BuildContext context) async {
+    final ad = _interReady ?? await _loadInterstitial();
+    if (ad == null) return; // internet/ad nahi mila — chuppe chaap aagay barh jao
+    _interReady = null;
+    final result = Completer<void>();
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        if (!result.isCompleted) result.complete();
+        _loadInterstitial(); // agle dafa ke liye
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        ad.dispose();
+        debugPrint('AdMob interstitial show failed: $error');
+        if (!result.isCompleted) result.complete();
+        _loadInterstitial();
+      },
+    );
+    await ad.show();
     return result.future;
   }
 }
