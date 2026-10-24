@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'admob_ads.dart';
+import 'applovin_ads.dart';
 import 'ads.dart';
 
-AdService createAds() => Platform.isAndroid ? AdMobAds() : PlaceholderAds();
+AdService createAds() => Platform.isAndroid ? AppLovinAds() : PlaceholderAds();
