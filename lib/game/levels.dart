@@ -680,8 +680,7 @@ Level theRavine() {
     Offset(2750, 328),
     Offset(2800, 336),
   ]);
-  double y(double x) =>
-      [a, b, c, d, e].map((t) => t.topAt(x)).nonNulls.first;
+  double y(double x) => [a, b, c, d, e].map((t) => t.topAt(x)).nonNulls.first;
   return Level(
     logs: [fallenTree(1380, 70, y)],
     mood: Mood.cliffs,
@@ -691,9 +690,7 @@ Level theRavine() {
       Rect.fromLTWH(2098, 336, 255, 6), // doosra rassi pul
       Rect.fromLTWH(2800, 336, 520, 240), // aakhri zameen (chhupne ka gaddha)
     ],
-    movers: const [
-      Mover(Rect.fromLTWH(1980, 320, 80, 16), dy: 42, speed: 1.2),
-    ],
+    movers: const [Mover(Rect.fromLTWH(1980, 320, 80, 16), dy: 42, speed: 1.2)],
     spikes: [
       Rect.fromLTWH(1560, y(1584) - 14, 48, 16),
       Rect.fromLTWH(2560, y(2584) - 14, 48, 16),
@@ -1340,8 +1337,7 @@ Level theSpire() {
     Offset(2210, 400), // shikanja
     Offset(2290, 404),
   ]);
-  double y(double x) =>
-      [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
+  double y(double x) => [a, b, c, d].map((t) => t.topAt(x)).nonNulls.first;
   return Level(
     logs: [fallenTree(1650, 60, y)],
     mood: Mood.cliffs,
@@ -1351,9 +1347,7 @@ Level theSpire() {
       Rect.fromLTWH(1000, 258, 250, 6), // rassi ka pul
       Rect.fromLTWH(2290, 404, 700, 200), // aakhri zameen (chhupne ka gaddha)
     ],
-    movers: const [
-      Mover(Rect.fromLTWH(2070, 385, 80, 16), dy: 40, speed: 1.2),
-    ],
+    movers: const [Mover(Rect.fromLTWH(2070, 385, 80, 16), dy: 40, speed: 1.2)],
     spikes: [Rect.fromLTWH(1510, y(1534) - 14, 48, 16)],
     saws: const [
       Saw(500, 150, speed: 1.9),
@@ -1692,25 +1686,18 @@ Level theDeep() {
     logs: [fallenTree(1250, 80, y)],
     mood: Mood.river,
     terrain: const [a, b, c],
-    pools: const [
-      Pool(740, 850, 408),
-      Pool(1038, 1094, 406, deep: true),
-    ],
+    pools: const [Pool(740, 850, 408), Pool(1038, 1094, 406, deep: true)],
     solids: const [
       Rect.fromLTWH(2150, 392, 580, 200), // aakhri zameen (chhupne ka gaddha)
     ],
-    movers: const [
-      Mover(Rect.fromLTWH(1900, 370, 80, 16), dy: 42, speed: 1.3),
-    ],
+    movers: const [Mover(Rect.fromLTWH(1900, 370, 80, 16), dy: 42, speed: 1.3)],
     spikes: [Rect.fromLTWH(1430, y(1444) - 14, 48, 16)],
     saws: const [
       Saw(1590, 300, speed: 2.2),
       Saw(600, 150, speed: 2.0),
       Saw(1750, 150, speed: 2.1),
     ],
-    traps: [
-      Rect.fromLTWH(370, y(384) - 10, 34, 10),
-    ],
+    traps: [Rect.fromLTWH(370, y(384) - 10, 34, 10)],
     pendulums: const [
       Pendulum(Offset(1830, 95), 175, speed: 2.2),
       Pendulum(Offset(1150, 90), 175, speed: 2.2, phase: 1),

@@ -35,7 +35,9 @@ class AppLovinAds implements AdService {
           _rewardedReady = false;
           debugPrint('MAX rewarded show failed: ${error.message}');
           // Dikhane mein hi masla aa gaya — khiladi ki ghalti nahi, inaam de do
-          if (_rewardEarned?.isCompleted == false) _rewardEarned!.complete(true);
+          if (_rewardEarned?.isCompleted == false) {
+            _rewardEarned!.complete(true);
+          }
           _loadRewarded();
         },
         onAdClickedCallback: (ad) {},

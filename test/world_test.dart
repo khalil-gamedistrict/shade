@@ -413,35 +413,32 @@ void main() {
       }
     });
 
-    test(
-      'gira darakht kisi gaddhay ke itna qareeb nahi ke uski jhukne ki '
-      'zone us gaddhay ki jump ko rok de',
-      () {
-        for (final c in chapters) {
-          final level = c.level!();
-          final segs =
-              level.terrain
-                  .map((t) => (t.points.first.dx, t.points.last.dx))
-                  .toList()
-                ..sort((a, b) => a.$1.compareTo(b.$1));
-          for (var i = 0; i + 1 < segs.length; i++) {
-            final gapStart = segs[i].$2, gapEnd = segs[i + 1].$1;
-            if (gapEnd <= gapStart + 1) continue;
-            for (final log in level.logs) {
-              final conflict =
-                  gapStart - 34 < log.right + 20 && gapEnd > log.left - 40;
-              expect(
-                conflict,
-                isFalse,
-                reason:
-                    '${c.title}: log ${log.left}-${log.right} vs gaddha '
-                    '$gapStart-$gapEnd',
-              );
-            }
+    test('gira darakht kisi gaddhay ke itna qareeb nahi ke uski jhukne ki '
+        'zone us gaddhay ki jump ko rok de', () {
+      for (final c in chapters) {
+        final level = c.level!();
+        final segs =
+            level.terrain
+                .map((t) => (t.points.first.dx, t.points.last.dx))
+                .toList()
+              ..sort((a, b) => a.$1.compareTo(b.$1));
+        for (var i = 0; i + 1 < segs.length; i++) {
+          final gapStart = segs[i].$2, gapEnd = segs[i + 1].$1;
+          if (gapEnd <= gapStart + 1) continue;
+          for (final log in level.logs) {
+            final conflict =
+                gapStart - 34 < log.right + 20 && gapEnd > log.left - 40;
+            expect(
+              conflict,
+              isFalse,
+              reason:
+                  '${c.title}: log ${log.left}-${log.right} vs gaddha '
+                  '$gapStart-$gapEnd',
+            );
           }
         }
-      },
-    );
+      }
+    });
 
     test('Chapter 1 mein shikaari bhi poora raasta paar karte hain', () {
       final level = noTiming(chapters.first.level!());
@@ -512,48 +509,61 @@ void main() {
     },
   );
 
-  test('mushkil 5 set mein barhti hai (har set 2 chapter, agla set mushkil-tar)', () {
-    double danger(Level l) {
-      final n =
-          l.spikes.length +
-          l.traps.length +
-          l.fires.length +
-          l.saws.length +
-          l.pendulums.length +
-          l.branches.length +
-          l.pools.where((p) => p.deep).length;
-      return n / (l.goalX - 100);
-    }
-
-    final levels = [for (final c in chapters) c.level!()];
-    expect(levels.length % 2, 0, reason: 'sets do-do chapter ke hain');
-
-    // Har set ke andar dono chapter taqreeban ek jaisi tier ke shikaari (speed/maxBehind
-    // mein zyada farq nahi) — lekin set ka aiwasat (average) khatra aur raftaar har set
-    // mein pichle set se saaf zyada hona chahiye.
-    double? prevSpeed, prevDanger;
-    for (var i = 0; i < levels.length; i += 2) {
-      final x = levels[i], y = levels[i + 1];
-      final set = 'set ${i ~/ 2 + 1}';
-      expect(y.chase!.speed, closeTo(x.chase!.speed, 6), reason: set);
-      expect(y.chase!.maxBehind, closeTo(x.chase!.maxBehind, 40), reason: set);
-      expect(x.chase!.speed, lessThan(World.speed), reason: 'bhaag sakte hon');
-      expect(y.chase!.speed, lessThan(World.speed), reason: 'bhaag sakte hon');
-
-      final avgSpeed = (x.chase!.speed + y.chase!.speed) / 2;
-      final avgDanger = (danger(x) + danger(y)) / 2;
-      if (prevSpeed != null) {
-        expect(avgSpeed, greaterThan(prevSpeed), reason: '$set raftaar');
-        expect(avgDanger, greaterThan(prevDanger!), reason: '$set khatre');
-      }
-      prevSpeed = avgSpeed;
-      prevDanger = avgDanger;
-    }
-  });
-
   test(
-    'chapter "Home" (shelved): rangeen, ghar pahunch kar qabeela khara hota hai, shikaari laut jaate hain',
+    'mushkil 5 set mein barhti hai (har set 2 chapter, agla set mushkil-tar)',
     () {
+      double danger(Level l) {
+        final n =
+            l.spikes.length +
+            l.traps.length +
+            l.fires.length +
+            l.saws.length +
+            l.pendulums.length +
+            l.branches.length +
+            l.pools.where((p) => p.deep).length;
+        return n / (l.goalX - 100);
+      }
+
+      final levels = [for (final c in chapters) c.level!()];
+      expect(levels.length % 2, 0, reason: 'sets do-do chapter ke hain');
+
+      // Har set ke andar dono chapter taqreeban ek jaisi tier ke shikaari (speed/maxBehind
+      // mein zyada farq nahi) — lekin set ka aiwasat (average) khatra aur raftaar har set
+      // mein pichle set se saaf zyada hona chahiye.
+      double? prevSpeed, prevDanger;
+      for (var i = 0; i < levels.length; i += 2) {
+        final x = levels[i], y = levels[i + 1];
+        final set = 'set ${i ~/ 2 + 1}';
+        expect(y.chase!.speed, closeTo(x.chase!.speed, 6), reason: set);
+        expect(
+          y.chase!.maxBehind,
+          closeTo(x.chase!.maxBehind, 40),
+          reason: set,
+        );
+        expect(
+          x.chase!.speed,
+          lessThan(World.speed),
+          reason: 'bhaag sakte hon',
+        );
+        expect(
+          y.chase!.speed,
+          lessThan(World.speed),
+          reason: 'bhaag sakte hon',
+        );
+
+        final avgSpeed = (x.chase!.speed + y.chase!.speed) / 2;
+        final avgDanger = (danger(x) + danger(y)) / 2;
+        if (prevSpeed != null) {
+          expect(avgSpeed, greaterThan(prevSpeed), reason: '$set raftaar');
+          expect(avgDanger, greaterThan(prevDanger!), reason: '$set khatre');
+        }
+        prevSpeed = avgSpeed;
+        prevDanger = avgDanger;
+      }
+    },
+  );
+
+  test('chapter "Home" (shelved): rangeen, ghar pahunch kar qabeela khara hota hai, shikaari laut jaate hain', () {
     final level = home();
     expect(level.mood, Mood.dawn);
     expect(level.home, isTrue);
@@ -726,21 +736,24 @@ void main() {
       expect(w.pos.dx, greaterThan(250)); // ruka nahi
     });
 
-    test('muft nahi milti — paas pahunch kar bhi ad ke baghair shield 0 rehti hai', () {
-      final w = World(
-        const Level(
-          solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
-          spikes: [],
-          saws: [],
-          checkpoints: [Offset(100, 400)],
-          goalX: 2900,
-          shields: [Offset(200, 400)],
-        ),
-      );
-      w.update(1.2, Input()..right = true); // paas pahunch gaya
-      expect(w.nearShield, 0);
-      expect(w.shield, 0); // ad dekhe baghair nahi milti
-    });
+    test(
+      'muft nahi milti — paas pahunch kar bhi ad ke baghair shield 0 rehti hai',
+      () {
+        final w = World(
+          const Level(
+            solids: [Rect.fromLTWH(-1000, 400, 4000, 200)],
+            spikes: [],
+            saws: [],
+            checkpoints: [Offset(100, 400)],
+            goalX: 2900,
+            shields: [Offset(200, 400)],
+          ),
+        );
+        w.update(1.2, Input()..right = true); // paas pahunch gaya
+        expect(w.nearShield, 0);
+        expect(w.shield, 0); // ad dekhe baghair nahi milti
+      },
+    );
 
     test('ad dekhte waqt poora khel (shikaari samet) ruka rehta hai', () {
       final w = World(

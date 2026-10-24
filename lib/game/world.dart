@@ -628,7 +628,8 @@ class World {
   int shield = 0; // kitne aur neze rok sakti hai (0 = dhaal nahi)
   final Set<int> shieldsTaken = {};
   int? nearShield; // qareeb khari dhaal ka index jo abhi li nahi gayi (ad dikhao to milegi)
-  bool adPaused = false; // ad chal raha ho to poora khel ruka rahe (shikaari bhi)
+  bool adPaused =
+      false; // ad chal raha ho to poora khel ruka rahe (shikaari bhi)
   double pickupTime = -10, shieldHitTime = -10, shieldBreakTime = -10;
   int deaths = 0;
   PlayerState state = PlayerState.alive;
@@ -874,7 +875,9 @@ class World {
   }
 
   void _step(double dt, Input input) {
-    if (adPaused) return; // dhaal ka ad chal raha hai — sab kuch (shikaari bhi) ruka
+    if (adPaused) {
+      return; // dhaal ka ad chal raha hai — sab kuch (shikaari bhi) ruka
+    }
     time += dt;
     if (state == PlayerState.won) {
       _updateRefuge(dt);

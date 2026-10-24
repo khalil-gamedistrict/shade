@@ -177,7 +177,8 @@ class _GameScreenState extends State<GameScreen>
   Future<void> _claimShield() async {
     final i = world.nearShield;
     if (i == null || _adShowing) return;
-    world.adPaused = true; // shikaari bhi ruk jayen, ad ke dauraan pakre na jayen
+    world.adPaused =
+        true; // shikaari bhi ruk jayen, ad ke dauraan pakre na jayen
     setState(() => _adShowing = true);
     final rewarded = await widget.ads.showRewarded(context);
     if (!mounted) return;

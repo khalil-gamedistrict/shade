@@ -37,7 +37,8 @@ class PlaceholderAds implements AdService {
 }
 
 class _FakeAd extends StatefulWidget {
-  final bool reward; // false = interstitial (koi inaam nahi, bas dikha kar band)
+  final bool
+  reward; // false = interstitial (koi inaam nahi, bas dikha kar band)
   const _FakeAd({this.reward = true});
 
   @override
